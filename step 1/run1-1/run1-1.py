@@ -84,15 +84,21 @@ def run_intarna_for_queries(target_file, query_file, unpaired_prob_file, output_
 
         target_region = f"{start_region}-{end_region}"
         command = (
-            f"IntaRNA --target {target_file} --query {query_file} "
-            f"--tAcc P --tAccFile {unpaired_prob_file} --tRegion {target_region} --noSeed 0 "
-            f"--SeedBP 5 --intLenMax 25 --qIntLenMax 0 --mode M --MODEL X --acc C --accW 150 "
-            f"--accL 100 -e V --temperature 37 --outMode C "
-            f"--outNumber 2 --outOverlap N --outCsvCols id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,"
-            f"Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,"
-            f"E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,"
-            f"seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,"
-            f"seedPu2,w,Eall,Eall1,P_E,RT"
+            f"IntaRNA "
+             f"--mode M --model X "
+             f"--energy V --temperature 37 "
+             f"--acc C --accW 150 --accL 100 "
+            f"--target {target_file} --tAcc P --tAccFile {unpaired_prob_file} "
+             f"--tRegion {target_region} --tIntLenMax 25"
+            f"--query {query_file} " # TODO: replace with query sequence
+             f"--qIntLenMax 0 "
+            f"--seedBP 5 "
+            f"--outMode C --outNumber 2 --outOverlap N --outMaxE=-4 "
+            f"--outCsvCols='id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,"
+              f"Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,"
+              f"E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,"
+              f"seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,"
+              f"seedPu2,w,Eall,Eall1,P_E,RT' "
         )
 
         # Print the command for debugging
