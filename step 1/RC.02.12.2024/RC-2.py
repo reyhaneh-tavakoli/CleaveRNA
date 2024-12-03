@@ -35,7 +35,7 @@ def find_motifs(sequence):
     used_positions = set()
     
     # Find all AC/GC motifs and track their exact positions
-    for match in re.finditer(r"AC|GC", sequence):
+    for match in re.finditer(r"AC|GC|GU|AU", sequence):
         start = match.start()
         pos1 = start + 1  # First nucleotide position
         pos2 = start + 2  # Second nucleotide position
@@ -59,19 +59,25 @@ def prepare_sequences(sequence, motifs):
     queries = []
     
     for start, end, motif, pos1, pos2 in motifs:
-        left_arm = sequence[max(0, start - 10) : start]
-        right_arm = sequence[end : end + 10]
+        # Consider 9 nucleotides before the first nucleotide of the cleavage site
+        left_arm = sequence[pos1 : pos1 + 9]
+        # Consider the second nucleotide of the cleavage site and 8 nucleotides after
+        right_arm = sequence[start + 1 : start + 10]
         
         if not set(left_arm).issubset(valid_nucleotides) or not set(right_arm).issubset(valid_nucleotides):
             continue
             
-        complementary_left_arm = "".join(["AUCG"["UAGC".index(n)] for n in left_arm[::-1]])
-        complementary_right_arm = "".join(["AUCG"["UAGC".index(n)] for n in right_arm[::-1]])
-        query_sequence = f"{complementary_right_arm}{linker}{complementary_left_arm}"
+        # Generate the reverse complement sequences
+        complementary_left_arm = "".join(["AUCG"["UAGC".index(n)] for n in left_arm][::-1])
+        complementary_right_arm = "".join(["AUCG"["UAGC".index(n)] for n in right_arm][::-1])
+        
+        # Construct the query sequence
+        query_sequence = f"{complementary_left_arm}{linker}{complementary_right_arm}"
         query_name = f"{motif}-{pos1}-{pos2}"  # Using actual dinucleotide positions
         queries.append((query_name, query_sequence))
     
     return queries
+
 def write_queries_to_fasta(queries, query_file):
     with open(query_file, "w") as f:
         for i, (query_name, query_sequence) in enumerate(queries):
@@ -139,7 +145,7 @@ def process_intarna_queries(
                 f"--outNumber 2 "
                 f"--outOverlap N "
                 f"--out {temp_dir}/result_{i}_with_region.csv "
-                f"--outCsvCols id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,seedPu2,w,Eall,Eall1,P_E"
+                f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,seedPu2,w,Eall,Eall1,P_E,RT'"
             )        
             # Second IntaRNA call without tRegion
             command2 = (
@@ -156,7 +162,7 @@ def process_intarna_queries(
                 f"--outNumber 2 "
                 f"--outOverlap N "
                 f"--out {temp_dir}/result_{i}_without_region.csv "
-                f"--outCsvCols id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,seedPu2,w,Eall,Eall1,P_E,RT"
+                f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,seedPu2,w,Eall,Eall1,P_E,RT'"
             )
             print(f"Processing query {i}/{len(queries)}: {query_name}")
             subprocess.run(command1, shell=True, check=True)
