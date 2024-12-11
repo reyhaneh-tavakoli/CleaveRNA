@@ -53,6 +53,8 @@ def find_motifs(sequence):
 
 # Define valid nucleotides
 valid_nucleotides = {"A", "U", "C", "G"}
+# length of arms
+arm_length = 9
 
 # Step 4: Prepare sequences for each cleavage site
 def prepare_sequences(sequence, motifs):
@@ -60,10 +62,10 @@ def prepare_sequences(sequence, motifs):
     queries = []
     
     for start, end, motif, pos1, pos2 in motifs:
-        # Consider 9 nucleotides before the first nucleotide of the cleavage site
-        left_arm = sequence[pos1 : pos1 + 9]
+        # Consider nucleotides before the first nucleotide of the cleavage site
+        left_arm = sequence[pos1 : pos1 + arm_length]
         # Consider the second nucleotide of the cleavage site and 8 nucleotides after
-        right_arm = sequence[start + 1 : start + 10]
+        right_arm = sequence[start + 1 : start + 1 + arm_length]
         
         if not set(left_arm).issubset(valid_nucleotides) or not set(right_arm).issubset(valid_nucleotides):
             continue
@@ -127,42 +129,38 @@ def process_intarna_queries(target_file, query_file, unpaired_prob_file, paramet
 
     all_results = []
     for i, (query_name, query_seq) in enumerate(queries, 1):
-        # Write individual query to temporary file
-        temp_query_file = f"{temp_dir}/query_{i}.fasta"
-        with open(temp_query_file, "w") as f:
-            f.write(f">{query_name}\n{query_seq}\n")
 
         # Extract motif positions from query name and adjust for 1-based indexing
         motif_info = query_name.split("-")
         if len(motif_info) >= 3:
-            start_pos = max(1, int(motif_info[1]) - 9)  # Ensure minimum is 1
-            end_pos = min(seq_length, int(motif_info[2]) + 11)  # Ensure maximum is sequence length
+            start_pos = max(1, int(motif_info[1]) - arm_length)  # Ensure minimum is 1
+            end_pos = min(seq_length, int(motif_info[2]) + 2 + arm_length)  # Ensure maximum is sequence length
             target_region = f"{start_pos}-{end_pos}"
 
             # First IntaRNA call with tRegion
             additional_params1 = (
-                f"--tAcc P "
-                f"--tIntLenMax 34 "
-                f"--tAccFile {unpaired_prob_file} "
                 f"--tRegion {target_region} "
+                f"--tAcc P "
+                f"--tAccFile {unpaired_prob_file} "
+                f"--tIntLenMax " +str(arm_length*2 + 2)+ " "
                 f"--out {temp_dir}/result_{i}_with_region.csv "
             )
-            command1 = construct_intarna_command(temp_query_file, target_file, parameter_file, additional_params1)
+            command1 = construct_intarna_command(query_seq, target_file, parameter_file, additional_params1)
 
             # Second IntaRNA call without tRegion
             additional_params2 = (
                 f"--tAcc P "
-                f"--tIntLenMax 34 "
                 f"--tAccFile {unpaired_prob_file} "
+                f"--tIntLenMax " +str(arm_length*2 + 2)+ " "
                 f"--out {temp_dir}/result_{i}_without_region.csv "
             )
-            command2 = construct_intarna_command(temp_query_file, target_file, parameter_file, additional_params2)
+            command2 = construct_intarna_command(query_seq, target_file, parameter_file, additional_params2)
 
             # Third IntaRNA call with query as both target and query
             additional_params3 = (
                 f"--out {temp_dir}/result_{i}_pairwise.csv "
             )
-            command3 = construct_intarna_command(temp_query_file, temp_query_file, parameter_file, additional_params3)
+            command3 = construct_intarna_command(query_seq, query_seq, parameter_file, additional_params3)
 
             print(f"Processing query {i}/{len(queries)}: {query_name}")
             subprocess.run(command1, shell=True, check=True)
