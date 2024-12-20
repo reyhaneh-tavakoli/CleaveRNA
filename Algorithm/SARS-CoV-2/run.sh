@@ -1,13 +1,16 @@
 #!/bin/bash
 
 # Define directories
-input_dir="/home/reyhaneh/Documents/git/RNAcutter/Algorithm/SARS-CoV-2 data/input"
-script_dir="/home/reyhaneh/Documents/git/RNAcutter/Algorithm/SARS-CoV-2 data/script"
-output_dir="/home/reyhaneh/Documents/git/RNAcutter/Algorithm/SARS-CoV-2 data/output"
-#python_path="/home/reyhaneh/.asdf/installs/python/3.11.0/bin/python"
+input_dir="./input2"
+script_dir="./script"
+output_dir="./output"
 
 # Create output directory if it doesn't exist
 mkdir -p "$output_dir"
+
+# activate environment with dependencies
+# conda activate IntaRNA
+
 
 # Record the start time
 start_time=$(date)
