@@ -2,7 +2,7 @@
 
 # Define directories
 input_dir="./input2"
-script_dir="./script"
+script_dir="../../"
 output_dir="./output"
 
 # Create output directory if it doesn't exist
