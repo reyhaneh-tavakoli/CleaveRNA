@@ -272,7 +272,10 @@ def main():
     target_file = sys.argv[4].split("=")[1]
     query_file = "queries.fasta"
     unpaired_prob_file = "converted_sequence_lunp"
-    parameter_file = "parameters.cfg"
+    
+    # set path of parameter file to this script file's location
+    main_path = str(pathlib.Path(__file__).parent.absolute())
+    parameter_file = main_path + "parameters.cfg"
 
     start_time = time.time()
     print(f"Start time: {time.ctime(start_time)}")
