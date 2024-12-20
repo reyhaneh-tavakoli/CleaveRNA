@@ -13,7 +13,7 @@ def convert_t_to_u(sequence):
 def run_rnaplfold(target_file):
     left_arm_length = int(sys.argv[2].split("=")[1])
     right_arm_length = int(sys.argv[3].split("=")[1])
-    u_length = left_arm_length + right_arm_length + 15
+    u_length = left_arm_length + right_arm_length + 4  # no catalytic core in target
     command = f"RNAplfold -W 150 -L 100 -u {u_length} < {target_file}"
     subprocess.run(command, shell=True)
 
