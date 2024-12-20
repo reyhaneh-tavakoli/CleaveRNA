@@ -4,7 +4,7 @@
 input_dir="/home/reyhaneh/Documents/git/RNAcutter/Algorithm/SARS-CoV-2 data/input"
 script_dir="/home/reyhaneh/Documents/git/RNAcutter/Algorithm/SARS-CoV-2 data/script"
 output_dir="/home/reyhaneh/Documents/git/RNAcutter/Algorithm/SARS-CoV-2 data/output"
-python_path="/home/reyhaneh/.asdf/installs/python/3.11.0/bin/python"
+#python_path="/home/reyhaneh/.asdf/installs/python/3.11.0/bin/python"
 
 # Create output directory if it doesn't exist
 mkdir -p "$output_dir"
@@ -21,7 +21,7 @@ for fasta_file in "$input_dir"/*.fasta; do
     echo "Processing file: $fasta_file"
     
     # Run the RNAcutter.py script
-    $python_path RNAcutter.py -motifs=AU,GU -LA=9 -RA=16 -target="$fasta_file"
+    python $(script_dir)/RNAcutter.py -motifs=AU,GU -LA=9 -RA=16 -target="$fasta_file"
     
     # Rename and move the output CSV file to the output directory
     mv "RNAcutter_result.csv" "$output_dir/${base_name}_output.csv"
