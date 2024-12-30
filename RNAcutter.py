@@ -4,6 +4,7 @@ import re
 import time
 import os
 import pandas as pd
+import pathlib
 
 # Function to convert T to U in a sequence
 def convert_t_to_u(sequence):
@@ -167,7 +168,7 @@ def process_intarna_queries(target_file, query_file, unpaired_prob_file, paramet
             # First IntaRNA call with tRegion
             left_arm_length = int(sys.argv[2].split("=")[1])
             right_arm_length = int(sys.argv[3].split("=")[1])
-            total_length = left_arm_length + right_arm_length + 10
+            total_length = left_arm_length + right_arm_length + 3
             additional_params1 = (
                 f"--tAcc P "
                 f"--tIntLenMax {total_length} "
@@ -240,32 +241,12 @@ def process_intarna_queries(target_file, query_file, unpaired_prob_file, paramet
                 next(infile)  # skip header
                 outfile3.write(infile.read())
 
-    # Combine results into a single CSV file with multiple sheets
-    with pd.ExcelWriter("RNAcutter_result.xlsx") as writer:
-        df_with_region = pd.read_csv(output_file_call1)
-        df_without_region = pd.read_csv(output_file_call2)
-        df_pairwise = pd.read_csv(output_file_call3)
-        
-        # Combine all results into a single CSV file
-        combined_df = pd.concat([df_with_region, df_without_region, df_pairwise], ignore_index=True)
-        combined_df.to_csv("RNAcutter_result.csv", index=False)
-        
-        df_with_region.to_excel(writer, sheet_name="With Region", index=False)
-        df_without_region.to_excel(writer, sheet_name="Without Region", index=False)
-        df_pairwise.to_excel(writer, sheet_name="Pairwise", index=False)
-    
-    # Delete the individual CSV files
-    os.remove(output_file_call1)
-    os.remove(output_file_call2)
-    os.remove(output_file_call3)
-
-    # Remove other CSV files but keep RNAcutter_result.csv
+    # Remove other CSV files but keep the specified result files
     for file in os.listdir("."):
-        if file.endswith(".csv") and file != "RNAcutter_result.csv":
+        if file.endswith(".csv") and file not in ["Results_with_region.csv", "Results_without_region.csv", "Results_pairwise.csv"]:
             os.remove(file)
 
 def main():
-    target_file = "target.fasta"
     if len(sys.argv) < 5 or not sys.argv[4].startswith("-target"):
         print("Error: Please provide the target file using the -target command.")
         sys.exit(1)
@@ -275,7 +256,7 @@ def main():
     
     # set path of parameter file to this script file's location
     main_path = str(pathlib.Path(__file__).parent.absolute())
-    parameter_file = main_path + "parameters.cfg"
+    parameter_file = os.path.join(main_path, "parameters.cfg")
 
     start_time = time.time()
     print(f"Start time: {time.ctime(start_time)}")
