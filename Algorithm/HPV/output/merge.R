@@ -7,7 +7,10 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
 
 
-ex <- read_csv("../Article/data.csv")
+ex <-
+  read_csv("../Article/data.csv")|>
+  mutate( seq = str_to_upper(Sequence) |> str_replace_all("T", "U")) |>
+  mutate( seqRC = str_to_upper(SequenceRC) |> str_replace_all("T", "U"))
 
 
 out <- list()
@@ -97,9 +100,17 @@ mergedData <-
         )
       # )
     # )
-  ) |>
-  View()
+  )
 
+# full merged data: for later exploration and prediction
 write_csv(mergedData, "mergedData.csv")
 
+annotated <-
+  left_join( mergedData,
+             ex,
+             by = c("seq2" = "seq")) |>
+  drop_na(DNAzyme) |>
+  View()
 
+# subset with experimental data: for training and evaluation
+write_csv(annotated, "mergedData_annotated.csv")
