@@ -125,7 +125,7 @@ def construct_intarna_command(query_file, target_file, parameter_file, additiona
         f"--outMaxE -4 "
         f"--outNumber 2 "
         f"--outOverlap N "
-        f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,Pu2,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,seedPu2,w,Eall,Eall1,P_E,RT' "
+        f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,E_dangleL,E_dangleR,E_endL,E_endR,E_init,E_loops,E_hybrid,E_norm,E_hybridNorm,E_add,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,Eall2,Zall,Zall1,Zall2,EallTotal,seedPu2,w,Eall,Eall1,P_E,RT' "
     )
     return base_command + additional_params
 
