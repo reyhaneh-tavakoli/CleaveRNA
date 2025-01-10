@@ -9,8 +9,39 @@ getwd()
 
 ex <- read_csv("../Article/data.csv")
 
+
+out <- list()
+
+# loading each individual output file
+for (i in 1:3) {
+  out[[i]] <-
+  read_delim( str_c("1_output",i,".csv"),
+                   delim=";") |>
+  group_by(id2) |>
+    mutate(solIdx = row_number()) |>
+    ungroup() |>
+    # TODO: add additional derived data columns
+    #....
+    # number of seeds
+    mutate(
+      seedNumber = str_count(seedE, ":")+1,
+      seedEbest = str_extract(seedE,"^[^:]+") %>% as.numeric()
+            ) |>
+
+    # final step: add suffiy to column names
+    rename_with( everything(), .fn = str_c, "_", i)
+}
+
+View(out[[3]])
+
+# prepare NA handling
 naDefaults <-
   list(
+
+    # derived features
+    seedEbest=0,
+    seedNumber=0,
+
     # # strings and positions: NA
     # id2,seq2,
     # subseqDB,hybridDB,
@@ -45,18 +76,6 @@ naDefaults <-
 
 
 
-out <- list()
-
-for (i in 1:3) {
-  out[[i]] <-
-  read_delim( str_c("1_output",i,".csv"),
-                   delim=",") |>
-  group_by(id2) |>
-    mutate(solIdx = row_number()) |>
-  rename_with( everything(), .fn = str_c, "_", i)
-}
-
-View(out[[1]])
 
 # merge all data sets
 mergedData <-
