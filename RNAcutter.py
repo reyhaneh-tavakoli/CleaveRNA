@@ -246,6 +246,12 @@ def process_intarna_queries(target_file, query_file, unpaired_prob_file, paramet
         if file.endswith(".csv") and file not in ["Results_with_region.csv", "Results_without_region.csv", "Results_pairwise.csv"]:
             os.remove(file)
 
+def cleanup_temp_files():
+    temp_files = ["temp_sequence.fasta", "output_queries.fasta"]
+    for file in temp_files:
+        if os.path.exists(file):
+            os.remove(file)
+
 def main():
     if len(sys.argv) < 5 or not sys.argv[4].startswith("-target"):
         print("Error: Please provide the target file using the -target command.")
@@ -287,6 +293,8 @@ def main():
     write_queries_to_fasta(queries, query_file)
 
     process_intarna_queries(target_file, query_file, unpaired_prob_file, parameter_file)
+
+    cleanup_temp_files()
 
     end_time = time.time()
     print(f"End time: {time.ctime(end_time)}")
