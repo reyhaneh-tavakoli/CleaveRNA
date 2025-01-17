@@ -6,6 +6,11 @@ library(tidyverse)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
 
+pu <-
+  read_delim("../converted_sequence_lunp", delim="\t", skip =2, col_names = F)
+
+pu <- set_names(pu, c( "i", str_c("l", 1:(ncol(pu)-1))))
+
 
 ex <-
   read_csv("../Article/data.csv")|>
@@ -35,7 +40,7 @@ for (i in 1:3) {
     rename_with( everything(), .fn = str_c, "_", i)
 }
 
-View(out[[3]])
+View(out[[1]])
 
 # prepare NA handling
 naDefaults <-
@@ -100,7 +105,28 @@ mergedData <-
         )
       # )
     # )
-  )
+  ) |>
+  # add unpaired probability data features
+  mutate( pos = str_extract(id2, "\\d+") |> as.numeric(),
+          # upstream range pu
+          pu1_4u = pull(pu,"l4")[pos-1],
+          pu5_8u = pull(pu,"l4")[pos-5],
+          # downstream
+          pu1_4d = pull(pu,"l4")[pos+1+4],
+          pu5_8d = pull(pu,"l4")[pos+1+8],
+          ) |>
+  rowwise() |>
+  mutate(
+    # upstream min of single-pos pu
+    pumin1_4u = min(pull(pu,"l1")[pos-(1:4)]),
+    pumin5_8u = min(pull(pu,"l1")[pos-(5:8)]),
+    # downstream
+    pumin1_4d = min(pull(pu,"l1")[pos+1+(1:4)]),
+    pumin5_8d = min(pull(pu,"l1")[pos+1+(5:8)]),
+  ) |>
+  ungroup() |>
+  # drop temporary column
+  select( - pos )
 
 # full merged data: for later exploration and prediction
 write_csv(mergedData, "mergedData.csv")
