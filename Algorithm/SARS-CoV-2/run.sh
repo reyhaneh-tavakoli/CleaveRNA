@@ -35,6 +35,9 @@ for fasta_file in ${input_dir}/*.fasta; do
         mv "Results_without_region.csv" "$output_dir/${base_name}_output2.csv"
         mv "Results_pairwise.csv" "$output_dir/${base_name}_output3.csv"
 
+        # keep unpaired probabilities
+        mv "converted_sequence_lunp" "${base_name}_converted_sequence_lunp"
+
         echo "Finished processing: $fasta_file"
         echo "------------------------"
     fi
