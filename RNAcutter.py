@@ -125,7 +125,7 @@ def construct_intarna_command(query_file, target_file, parameter_file, additiona
         f"--outMaxE -4 "
         f"--outNumber 2 "
         f"--outOverlap N "
-        f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,E_hybrid,E_norm,E_hybridNorm,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,seedPu2,Eall,Eall1,Eall2,Zall,Zall1,Zall2,EallTotal,P_E' "
+        f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,E_hybrid,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,seedPu2,P_E' "
     )
     return base_command + additional_params
 
@@ -260,9 +260,13 @@ def main():
     query_file = "queries.fasta"
     unpaired_prob_file = "converted_sequence_lunp"
     
-    # set path of parameter file to this script file's location
-    main_path = str(pathlib.Path(__file__).parent.absolute())
-    parameter_file = os.path.join(main_path, "parameters.cfg")
+    if len(sys.argv) < 6:
+        print("Error: Please provide the parameter file using the -cfg command.")
+        sys.exit(1)
+    if not sys.argv[5].startswith("-cfg"):
+        print("Error: Invalid parameter file argument. Please use the -cfg command.")
+        sys.exit(1)
+    parameter_file = sys.argv[5].split("=")[1]
 
     start_time = time.time()
     print(f"Start time: {time.ctime(start_time)}")

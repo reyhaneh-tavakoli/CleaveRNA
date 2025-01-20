@@ -17,7 +17,7 @@ conda activate intarna_env
 start_time=$(date)
 
 # input file
-fasta_file=sequence.fasta
+fasta_file=1.fasta
 
 # Get the base name of the fasta file
 base_name=$(basename "$fasta_file" .fasta)
@@ -27,7 +27,7 @@ echo "Processing file: $fasta_file"
 
 # Run the RNAcutter.py script
 # TODO UPDATE PARAMETERS FOR HPV
-python "${script_dir}" -motifs=AU,GU,AC,GC -LA=9 -RA=8 -target="$fasta_file"  
+python "${script_dir}" -motifs=AU,GU,AC,GC -LA=9 -RA=8 -target="$fasta_file" -cfg=parameters.cfg
 
 # Rename and move the output CSV files to the output directory
 mv "Results_with_region.csv" "$output_dir/${base_name}_output1.csv"

@@ -28,7 +28,7 @@ for fasta_file in ${input_dir}/*.fasta; do
         echo "Processing file: $fasta_file"
 
         # Run the RNAcutter.py script
-        python "${script_dir}" -motifs=AU,GU -LA=16 -RA=7 -target="$fasta_file"
+        python "${script_dir}" -motifs=AU,GU -LA=16 -RA=7 -target="$fasta_file" -cfg=parameters.cfg
 
         # Rename and move the output CSV files to the output directory
         mv "Results_with_region.csv" "$output_dir/${base_name}_output1.csv"
