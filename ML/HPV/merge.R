@@ -1,21 +1,30 @@
-install.packages("tidyverse")
-install.packages(c("dplyr", "tidyr", "dbplyr", "dtplyr"))
-install.packages("conflicted")
+# install.packages("tidyverse")
+# install.packages(c("dplyr", "tidyr", "dbplyr", "dtplyr"))
+# install.packages("conflicted")
 library(conflicted)
 library(tidyverse)
-library(tibble)
 # set script location as working directory using Rstudio API
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
+
+dataRootFolder <- "../../Algorithm/HPV"
+
+# unpaired prob data
+pu <-
+  read_delim(str_c(dataRootFolder,"/converted_sequence_lunp"), delim="\t", skip =2, col_names = F)
+
+pu <- set_names(pu, c( "i", str_c("l", 1:(ncol(pu)-1))))
+
+# experimental data
 ex <-
-  read_csv("../Article/data.csv")|>
+  read_csv(str_c(dataRootFolder,"/Article/data.csv")) |>
   mutate( seq = str_to_upper(Sequence) |> str_replace_all("T", "U")) |>
   mutate( seqRC = str_to_upper(SequenceRC) |> str_replace_all("T", "U"))
 out <- list()
 # loading each individual output file
 for (i in 1:3) {
   out[[i]] <-
-    read_delim( str_c("1_output",i,".csv"),
+    read_delim( str_c(dataRootFolder,"/output/1_output",i,".csv"),
                 delim=",") |>
     group_by(id2) |>
     mutate(solIdx = row_number()) |>
@@ -27,7 +36,7 @@ for (i in 1:3) {
       seedNumber = str_count(seedE, ":")+1,
       seedEbest = str_extract(seedE,"^[^:]+") %>% as.numeric()
     ) |>
-    
+
     # final step: add suffiy to column names
     rename_with( everything(), .fn = str_c, "_", i)
 }
