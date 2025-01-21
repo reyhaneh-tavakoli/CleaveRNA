@@ -15,7 +15,7 @@ if not os.path.exists('plots'):
 
 def get_feature_group(feature_name):
     """Determine the group of a feature based on its suffix"""
-    if feature_name == 'Y60':
+    if feature_name == 'Y':
         return 'TARGET'
     elif feature_name.endswith('_1'):
         return 'GROUP_1'
@@ -66,7 +66,7 @@ def create_correlation_heatmap(data, output_path):
 
 def analyze_features(data_path):
     """
-    Analyze feature relationships with Y60 target variable with normalized weights.
+    Analyze feature relationships with Y target variable with normalized weights.
     Features are organized by their suffix groups (_1, _2, _3, EXTRA).
     """
     # Load data
@@ -76,9 +76,9 @@ def analyze_features(data_path):
     # Remove rows where all values are 0
     data = data[(data != 0).any(axis=1)]
     
-    # Calculate correlations with Y60
-    correlations = data.corr()['Y60'].sort_values(ascending=False)
-    correlations = correlations.drop('Y60')
+    # Calculate correlations with Y
+    correlations = data.corr()['Y'].sort_values(ascending=False)
+    correlations = correlations.drop('Y')
     
     # Get number of features
     n_features = len(correlations)
@@ -105,7 +105,7 @@ def analyze_features(data_path):
     
     # 2. Create and save correlation heatmap (grouped)
     grouped_features = feature_table['Feature'].tolist()
-    grouped_data = data[grouped_features + ['Y60']]
+    grouped_data = data[grouped_features + ['Y']]
     create_correlation_heatmap(grouped_data, 'plots/correlation_heatmap_grouped.png')
     
     # 3. Save feature importance scores (grouped)
@@ -162,7 +162,7 @@ def analyze_features(data_path):
         'Correlation': correlations.values,
         'Weight_Percentage': (weights.values * 100).round(2),
         'Abs_Correlation_Rank': abs_correlations.rank(ascending=False),
-        'Statistical_Significance': [stats.pearsonr(data[feat], data['Y60'])[1] for feat in correlations.index]
+        'Statistical_Significance': [stats.pearsonr(data[feat], data['Y'])[1] for feat in correlations.index]
     }).sort_values(['Group', 'Abs_Correlation_Rank'])
     
     feature_scores.to_csv('plots/feature_scores_grouped.csv', index=False)

@@ -13,8 +13,7 @@ dataRootFolder <- "../../Algorithm/SARS-CoV-2"
 # experimental data
 ex <-
   read_csv(str_c(dataRootFolder,"/Article/Fig3-data.csv")) |>
-  mutate( seq = str_to_upper(Sequence) |> str_replace_all("T", "U")) |>
-  mutate( seqRC = str_to_upper(SequenceRC) |> str_replace_all("T", "U"))
+  mutate( seq = str_to_upper(Sequence) |> str_replace_all("T", "U")) 
 
 
 allMergedData <- list()
@@ -22,15 +21,18 @@ allMergedDataAnnotated <- list()
 
 # input file specific reading
 #########################################################
-for ( inputFile in 9) { # begin of inputFile specific stuff
-#########################################################
+# Initialize lists to store data
+allMergedData <- list()
+allMergedDataAnnotated <- list()
 
-
+for (inputFile in 1:20) { # modified to loop through files 1-20
+  #########################################################
+  
   # unpaired prob data
   pu <-
     read_delim(str_c(dataRootFolder,"/",inputFile, "_converted_sequence_lunp"), delim="\t", skip =2, col_names = F)
   pu <- set_names(pu, c( "i", str_c("l", 1:(ncol(pu)-1))))
-
+  
   # read and process data for inputFile
   out <- list()
   # loading each individual output file
@@ -48,21 +50,17 @@ for ( inputFile in 9) { # begin of inputFile specific stuff
         seedNumber = str_count(seedE, ":")+1,
         seedEbest = str_extract(seedE,"^[^:]+") %>% as.numeric()
       ) |>
-
+      
       # final step: add suffiy to column names
       rename_with( everything(), .fn = str_c, "_", i)
   }
-  # View(out[[3]])
+  
   # prepare NA handling
   naDefaults <-
     list(
       # derived features
       seedEbest=0,
       seedNumber=0,
-      # # strings and positions: NA
-      # id2,seq2,
-      # subseqDB,hybridDB,
-      # seedStart1,seedEnd1,seedStart2,seedEnd2,
       # energies, probabilities, partition functions: default = 0
       E=0,
       Etotal=0,
@@ -89,7 +87,7 @@ for ( inputFile in 9) { # begin of inputFile specific stuff
       seedED1="999999",
       seedED2="999999"
     )
-
+  
   # merge all data sets
   mergedData <-
     full_join(out[[1]], out[[2]], by =c("id2_1"="id2_2",
@@ -101,15 +99,11 @@ for ( inputFile in 9) { # begin of inputFile specific stuff
     rename( id2 = id2_1, seq2 = seq2_1, solIdx = solIdx_1) |>
     # NA handling
     replace_na(
-      # list(
-      # unlist(
       c(
         set_names(naDefaults, ~str_c(.,"_1")),
         set_names(naDefaults, ~str_c(.,"_2")),
         set_names(naDefaults, ~str_c(.,"_3"))
       )
-      # )
-      # )
     ) |>
     # add unpaired probability data features
     mutate( pos = str_extract(id2, "\\d+") |> as.numeric(),
@@ -132,36 +126,31 @@ for ( inputFile in 9) { # begin of inputFile specific stuff
     ungroup() |>
     # drop temporary column
     select( - pos )
-
-
-  # full merged data: for later exploration and prediction
-  # write_csv(mergedData, str_c(inputFile,"_mergedData.csv"))
-  allMergedData[[inputFile]] <- mergedData
-
+  
+  # Store merged data in list
+  allMergedData[[as.character(inputFile)]] <- mergedData
+  
   # Perform the join
   annotated <- left_join(mergedData, ex, by = c("seq2" = "seq"))
-
-  # Inspect before drop_na()
-  # head(annotated)
-
-  # If data exists, apply drop_na
+  
+  # Apply drop_na
   annotated <- drop_na(annotated, DNAzyme)
-
-  # Check final result
-  # head(annotated)
-  # write.csv(annotated, str_c(inputFile,"_mergedData_annotated.csv"))
-  allMergedDataAnnotated[[inputFile]] <- annotated
-
+  
+  # Store annotated data in list
+  allMergedDataAnnotated[[as.character(inputFile)]] <- annotated
+  
+  # Print progress
+  cat(sprintf("Processed file %d of 20\n", inputFile))
+  
 } # end of inputFile specific stuff
-
 
 # write combined data
 allMergedData |>
   bind_rows() |>
   distinct() |>
   write_csv("mergedData.csv")
+
 allMergedDataAnnotated |>
   bind_rows() |>
   distinct() |>
-  write.csv("mergedData_annotated.csv")
-
+  write_csv("mergedData_annotated.csv")
