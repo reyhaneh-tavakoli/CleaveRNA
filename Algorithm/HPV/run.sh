@@ -33,6 +33,7 @@ python "${script_dir}" -motifs=AU,GU,AC,GC -LA=9 -RA=8 -target="$fasta_file" -cf
 mv "Results_with_region.csv" "$output_dir/${base_name}_output1.csv"
 mv "Results_without_region.csv" "$output_dir/${base_name}_output2.csv"
 mv "Results_pairwise.csv" "$output_dir/${base_name}_output3.csv"
+mv converted_sequence_lunp 1_converted_sequence_lunp
 
 # Record the end time
 end_time=$(date)
