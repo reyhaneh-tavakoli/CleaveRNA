@@ -113,6 +113,10 @@ for (inputFile in dataFileIds) { # modified to loop through files 1-20
         set_names(naDefaults, ~str_c(.,"_3"))
       )
     ) |>
+    # add relative differences between predictions
+    mutate(
+      E_diff_12 = E_2 - E_1,
+    ) |>
     # add unpaired probability data features
     mutate( pos = str_extract(id2, "\\d+") |> as.numeric(),
             #         # upstream range pu
@@ -133,16 +137,23 @@ for (inputFile in dataFileIds) { # modified to loop through files 1-20
     ) |>
     ungroup() |>
     # drop temporary column
-    select( - pos )
+    select( - pos ) |>
+    # drop ED._1 columns, since redundant with Pu values
+    select( - matches("ED[12]_1$") ) |>
+    # drop all "_2" and "P_E" columns
+    select( - ends_with("_2"), - starts_with("P_E_") ) |>
+    # drop "_3" columns except ED2_3 and seedNumber_3
+    select( - matches("[1Eltd]_3$|Pu2_3$|(start|end).*_3$|DB_3$") )
 
   # Store merged data in list
   allMergedData[[as.character(inputFile)]] <- mergedData
 
   # Perform the join
-  annotated <- left_join(mergedData, ex, by = c("seq2" = "seq"))
+  annotated <-
+    left_join(mergedData, ex, by = c("seq2" = "seq")) |>
+    # Apply drop_na
+    drop_na(DNAzyme)
 
-  # Apply drop_na
-  annotated <- drop_na(annotated, DNAzyme)
 
   # Store annotated data in list
   allMergedDataAnnotated[[as.character(inputFile)]] <- annotated
