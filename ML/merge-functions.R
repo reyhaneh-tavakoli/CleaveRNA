@@ -142,8 +142,8 @@ for (inputFile in dataFileIds) { # modified to loop through files 1-20
     select( - matches("ED[12]_1$") ) |>
     # drop all "_2" and "P_E" columns
     select( - ends_with("_2"), - starts_with("P_E_") ) |>
-    # drop "_3" columns except ED2_3 and seedNumber_3
-    select( - matches("[1Eltd]_3$|Pu2_3$|(start|end).*_3$|DB_3$") )
+    # drop "_3" columns except E_2, ED2_3 and seedNumber_3
+    select( - matches("[1ltd]_3$|Pu2_3$|(start|end).*_3$|DB_3$") )
 
   # Store merged data in list
   allMergedData[[as.character(inputFile)]] <- mergedData
