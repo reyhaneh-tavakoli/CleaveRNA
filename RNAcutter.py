@@ -188,8 +188,10 @@ def process_intarna_queries(target_file, query_file, unpaired_prob_file, paramet
             command2 = construct_intarna_command(temp_query_file, target_file, parameter_file, additional_params2)
 
             # Third IntaRNA call with query as both target and query
+            # ensure there is a prediction for each pair (outMaxE), to avoid missing predictions
             additional_params3 = (
                 f"--out result_{i}_pairwise.csv "
+                f"--outMaxE 10 "
             )
             command3 = construct_intarna_command(temp_query_file, temp_query_file, parameter_file, additional_params3)
 
