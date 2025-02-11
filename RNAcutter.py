@@ -115,6 +115,7 @@ def write_queries_to_fasta(queries, query_file):
             f.write(f">{query_name}\n{query_sequence}\n")
 
 def construct_intarna_command(query_file, target_file, parameter_file, additional_params):
+    # ensure there is a prediction for each pair (outMaxE), to avoid missing predictions
     base_command = (
         f"IntaRNA "
         f"--query {query_file} "
@@ -122,8 +123,8 @@ def construct_intarna_command(query_file, target_file, parameter_file, additiona
         f"--qIntLenMax 0 "
         f"--parameterFile {parameter_file} "
         f"--outMode C "
-        f"--outMaxE -4 "
-        f"--outNumber 2 "
+        f"--outMaxE 10 "
+        f"--outNumber 1 "
         f"--outOverlap N "
         f"--outCsvCols 'id2,seq2,E,Etotal,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,E_hybrid,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,seedPu2,P_E' "
     )
@@ -188,10 +189,8 @@ def process_intarna_queries(target_file, query_file, unpaired_prob_file, paramet
             command2 = construct_intarna_command(temp_query_file, target_file, parameter_file, additional_params2)
 
             # Third IntaRNA call with query as both target and query
-            # ensure there is a prediction for each pair (outMaxE), to avoid missing predictions
             additional_params3 = (
                 f"--out result_{i}_pairwise.csv "
-                f"--outMaxE 10 "
             )
             command3 = construct_intarna_command(temp_query_file, temp_query_file, parameter_file, additional_params3)
 
