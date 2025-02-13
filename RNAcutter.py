@@ -124,7 +124,7 @@ def construct_intarna_command(query_file, target_file, parameter_file, additiona
         f"--parameterFile {parameter_file} "
         f"--outMode C "
         f"--outMaxE 10 "
-        f"--seedMaxE 10 "
+        f"--seedMaxE 3 "
         f"--outNumber 1 "
         f"--outOverlap N "
         f"--outCsvCols 'id2,seq2,E,ED1,ED2,Pu1,Pu2,subseqDB,hybridDB,E_hybrid,seedStart1,seedEnd1,seedStart2,seedEnd2,seedE,seedED1,seedED2,seedPu1,seedPu2,P_E' "
