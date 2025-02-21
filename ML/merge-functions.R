@@ -13,14 +13,14 @@
 # install.packages("tidyverse")
 library(tidyverse)
 
-# # set script location as working directory using Rstudio API
-setwd("/home/reyhaneh/Documents/git/RNAcutter/ML")
-getwd()
-
-dataRootFolder <- "../Algorithm/SARS-CoV-2"
-dataFileEx <- "/Article/Fig3-data.csv"
-dataFileExCol <- c( Y = "Y10" )
-dataFileIds <- 1:20
+# # # set script location as working directory using Rstudio API
+# setwd("/home/reyhaneh/Documents/git/RNAcutter/ML")
+# getwd()
+#
+# dataRootFolder <- "../Algorithm/SARS-CoV-2"
+# dataFileEx <- "/Article/Fig3-data.csv"
+# dataFileExCol <- c( Y = "Y10" )
+# dataFileIds <- 1:20
 
 
 # experimental data
@@ -176,7 +176,8 @@ allMergedDataAnnotated |>
 
 
 # prepare feature testing with numeric data only
-allMergedDataAnnotated |>
+numericData <-
+  allMergedDataAnnotated |>
   bind_rows() |>
   # select all numeric columns
   select(where(is.numeric)) |>
@@ -185,6 +186,17 @@ allMergedDataAnnotated |>
     -starts_with("P_E")) |>
   # rename target column to Y
   rename(all_of(dataFileExCol)) |>
-  distinct() |>
+  distinct()
+
+# write numeric data
+numericData |>
   write_csv("mergedData_annotated.num.csv")
+
+# write balanced data
+numericData |>
+  # sarscov data tresholds
+  filter(Y >= 0.18  | Y < 0.01 ) |> # balanced data
+  write_csv("mergedData_annotated.balanced.num.csv")
+
+
 
