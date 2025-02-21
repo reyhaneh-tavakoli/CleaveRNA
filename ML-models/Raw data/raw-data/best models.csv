@@ -1,0 +1,9 @@
+Feature Combination,Model,R2 Score,MAE,RMSE
+"seedNumber_1, pumin1_4d, E_diff_12, E_3, Pu1_1",Decision Tree,0.937929679827146,0.0228571428571429,0.0335942171894424
+"seedNumber_1, pumin5_8d, pumin1_4d, E_diff_12, E_3, Pu1_1",Decision Tree,0.935179728933412,0.025,0.0343303281162798
+"seedNumber_1, pumin1_4d, E_diff_12, E_3, Pu1_1, pumin1_4u",Decision Tree,0.934001178550383,0.0257142857142857,0.0346410161513776
+"seedNumber_1, pumin5_8d, pumin1_4d, E_diff_12, E_1, seedNumber_3, pumin1_4u",Decision Tree,0.934786878805736,0.0257142857142857,0.0344342022662684
+"seedNumber_1, pumin5_8d, pumin1_4d, E_diff_12, E_1, pumin1_4u",Decision Tree,0.924572775486152,0.0242857142857143,0.0370328039909021
+"seedNumber_1, pumin5_8d, pumin1_4d, E_diff_12, E_3, E_hybrid_1, Pu1_1",Decision Tree,0.919072873698684,0.03,0.0383592045202787
+"seedNumber_1, pumin5_8d, pumin1_4d, E_diff_12, E_1, E_hybrid_1, Pu1_1, pumin1_4u",Decision Tree,0.910037320762129,0.0264285714285714,0.0404439647625488
+"seedNumber_1, pumin5_8d, E_diff_12, E_3, E_hybrid_1, Pu1_1, seedNumber_3, pumin1_4u",Decision Tree,0.915930072677274,0.0285714285714286,0.03909694909544
