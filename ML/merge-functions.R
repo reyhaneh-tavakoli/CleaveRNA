@@ -14,13 +14,13 @@
 library(tidyverse)
 
 # # # set script location as working directory using Rstudio API
-# setwd("/home/reyhaneh/Documents/git/RNAcutter/ML")
-# getwd()
-#
-# dataRootFolder <- "../Algorithm/SARS-CoV-2"
-# dataFileEx <- "/Article/Fig3-data.csv"
-# dataFileExCol <- c( Y = "Y10" )
-# dataFileIds <- 1:20
+#setwd("/home/reyhaneh/Documents/git/RNAcutter/ML")
+#getwd()
+
+#dataRootFolder <- "../Algorithm/SARS-CoV-2"
+#dataFileEx <- "/Article/Fig3-data.csv"
+#dataFileExCol <- c( Y = "Y10" )
+#dataFileIds <- 1:20
 
 
 # experimental data
@@ -196,7 +196,14 @@ numericData |>
 numericData |>
   # sarscov data tresholds
   filter(Y >= 0.18  | Y < 0.01 ) |> # balanced data
-  write_csv("mergedData_annotated.balanced.num.csv")
+  write_csv("mergedData_annotated.balanced1.num.csv")
+
+numericData |>
+  # sarscov data tresholds
+  filter(Y >= 0.13  | Y <= 0.01 ) |> # balanced data
+  write_csv("mergedData_annotated.balanced2.num.csv")
+
+
 
 
 
