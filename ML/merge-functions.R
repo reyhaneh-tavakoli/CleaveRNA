@@ -9,6 +9,7 @@
 ## - dataFileEx = location of data file with experimental data wrt. dataRootFolder
 ## - dataFileExCol = c( Y = "ColNameOfExpData" )
 ## - dataFileIds = file prefix numbers
+## - dataYthreshold = threshold to split data into positive and negative classes
 ######################################
 # install.packages("tidyverse")
 library(tidyverse)
@@ -21,6 +22,7 @@ library(tidyverse)
 #dataFileEx <- "/Article/Fig3-data.csv"
 #dataFileExCol <- c( Y = "Y10" )
 #dataFileIds <- 1:20
+#dataYthreshold <- 0.15
 
 
 # experimental data
@@ -203,6 +205,31 @@ numericData |>
   filter(Y >= 0.13  | Y <= 0.01 ) |> # balanced data
   write_csv("mergedData_annotated.balanced2.num.csv")
 
+# convert to binary target
+catData <-
+  numericData |>
+  mutate( Y = if_else(Y >= dataYthreshold, 1, 0) )
+
+# get mean and std of numeric data
+catData |>
+  select(-Y) |>
+  summarise(across(everything(), list(mean=mean, sd=sd)) ) |>
+  # pivot longer
+  pivot_longer(cols = everything(), names_to = "feature", values_to = "value") |>
+  # split feature colum into feature name and _mean/_sd suffix
+  separate(feature, into = c("feature", "stat"), sep = "_(?=mean|sd)") |>
+  # pivot wider
+  pivot_wider(names_from = stat, values_from = value) |>
+  write_csv("mergedData_annotated.mean.sd.csv")
+
+# get number of instances per class to have balanced results
+nPerClass <- min( sum(catData$Y), nrow(catData) - sum(catData$Y) )
+
+catData |>
+  # standardize all numeric data (excluding the Y column)
+  mutate(across(-Y, \(col) scale(col, center=TRUE, scale=TRUE) |> as.vector()))
+# |>
+#   write_csv("mergedData_annotated.num.std.csv")
 
 
 
