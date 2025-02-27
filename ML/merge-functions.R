@@ -225,11 +225,18 @@ catData |>
 # get number of instances per class to have balanced results
 nPerClass <- min( sum(catData$Y), nrow(catData) - sum(catData$Y) )
 
+# define random seed for slice_sample
+set.seed(89273554)
+
 catData |>
   # standardize all numeric data (excluding the Y column)
-  mutate(across(-Y, \(col) scale(col, center=TRUE, scale=TRUE) |> as.vector()))
-# |>
-#   write_csv("mergedData_annotated.num.std.csv")
+  mutate(across(-Y, \(col) scale(col, center=TRUE, scale=TRUE) |> as.vector())) |>
+  # sample nPerClass instances per class
+  group_by(Y) |>
+  slice_sample(n=nPerClass) |>
+  ungroup() |>
+  # view()
+  write_csv("mergedData_annotated.cat.scaled.balanced.csv")
 
 
 
