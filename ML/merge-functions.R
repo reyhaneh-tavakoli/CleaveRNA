@@ -1,33 +1,9 @@
 
-######################################
-## PRELIMINARIES
-##''''''''''''''''''''''''''''''''''''
-## set
-## - working directory
-## set variables
-## - dataRootFolder
-## - dataFileEx = location of data file with experimental data wrt. dataRootFolder
-## - dataFileExCol = c( Y = "ColNameOfExpData" )
-## - dataFileIds = file prefix numbers
-## - dataYthreshold = threshold to split data into positive and negative classes
-######################################
-# install.packages("tidyverse")
 library(tidyverse)
-
-# # # set script location as working directory using Rstudio API
-#setwd("/home/reyhaneh/Documents/git/RNAcutter/ML")
-#getwd()
-
-#dataRootFolder <- "../Algorithm/SARS-CoV-2"
-#dataFileEx <- "/Article/Fig3-data.csv"
-#dataFileExCol <- c( Y = "Y10" )
-#dataFileIds <- 1:20
-#dataYthreshold <- 0.15
-
 
 # experimental data
 ex <-
-  read_csv(str_c(dataRootFolder,dataFileEx)) |>
+  read_csv(str_c(dataRootFolder,dataFileEx),show_col_types = FALSE) |>
   mutate( seq = str_to_upper(Sequence) |> str_replace_all("T", "U"))
 
 
@@ -194,17 +170,6 @@ numericData <-
 numericData |>
   write_csv("mergedData_annotated.num.csv")
 
-# write balanced data
-numericData |>
-  # sarscov data tresholds
-  filter(Y >= 0.18  | Y < 0.01 ) |> # balanced data
-  write_csv("mergedData_annotated.balanced1.num.csv")
-
-numericData |>
-  # sarscov data tresholds
-  filter(Y >= 0.13  | Y <= 0.01 ) |> # balanced data
-  write_csv("mergedData_annotated.balanced2.num.csv")
-
 # convert to binary target
 catData <-
   numericData |>
@@ -232,9 +197,9 @@ catData |>
   # standardize all numeric data (excluding the Y column)
   mutate(across(-Y, \(col) scale(col, center=TRUE, scale=TRUE) |> as.vector())) |>
   # sample nPerClass instances per class
-  group_by(Y) |>
-  slice_sample(n=nPerClass) |>
-  ungroup() |>
+  #group_by(Y) |>
+  #slice_sample(n=nPerClass) |>
+  #ungroup() |>
   # view()
   write_csv("mergedData_annotated.cat.scaled.balanced.csv")
 

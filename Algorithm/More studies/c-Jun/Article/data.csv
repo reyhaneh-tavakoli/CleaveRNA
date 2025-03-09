@@ -1,0 +1,33 @@
+SEQUENCE ID,Type,Description,Sequence,
+SEQ ID NO 2,DNA,Synthetic Construct (Dz13err),gegaegtgaeg getagetaca acgaegtggag gagn,
+SEQ ID NO 3,DNA,Synthetic Construct (Aa13err),gegaegtgae gtggaggagn,
+SEQ ID NO 4,DNA,Synthetic Construct (Catalytic domain of DNAzyme),ggctagctac aacga,
+SEQ ID NO 5,DNA,Synthetic Construct (DNAzyme),cgggaggaaag getagetaca acgaagaggg tag,
+SEQ ID NO 6,DNA,Synthetic Construct (Antisense oligonucleotide),cgggaggaaac gaggcgttg,
+SEQ ID NO 7,DNA,Synthetic Construct (Dzi3(11+11) variant),gacgggagga aggctagcta caacgagagg cgttgagn,
+SEQ ID NO 0,DNA,Synthetic Construct (Dz13(10+10) variant),aggggaggaa ggctagctac aacgaqaggc gtcgan,
+SEQ ID NO 9,DNA,Synthetic Construct (Dz13(8+8) variant),gggaggaagg ctagctacaa cgaagggcgt tn,
+SEQ ID NO 10,DNA,Synthetic Construct (Dz13(11+11)scr),gagcgacgcg aggctagcta caacgaqfcgg aggaqagn,
+SEQ ID NO 11,DNA,Synthetic Construct (Dz13(10+10)scr),agcgacgcga ggctagctac aacgaqfcga ggagan,
+SEQ ID NO 12,DNA,Synthetic Construct (Dz13(8+8)scr),cgacgcgagg ctagctacaa cgaqfcgaagg an,
+SEQ ID NO 13,RNA,Homo sapiens c-Jun mRNA,,casegccucg uuccucccgu c
+SEQ ID NO 14,RNA,Marine c-Jun mRNA,,casegccucg uuccuccag
+SEQ ID NO 15,DNA,Artificial Sequence,Primer MMP-2 forward,gggacagaa ccagatcaca tac
+SEQ ID NO 16,RNA,Artificial Sequence,Primer MMP-2 reverse,ctctcaaag ttgtaggttgg tgg
+SEQ ID NO 17,RNA,Artificial Sequence,Primer GAPDH forward,accacagtcct atgccatcac
+SEQ ID NO 18,RNA,Artificial,Primer GAPDH reverse,tccaccaccc tgttgetgaa
+SEQ ID NO 19,RNA,pig c-Jun mRNA,,caacgccucg uuccuccagu c
+SEQUENCE ID,Type,Organism,Description,Sequence
+SEQ ID NO 20,DNA,rat c-Jun mRNA,,caeqgccucq uuccuccagu c
+SEQ ID NO 21,DNA,Artificial Sequence,Synthetic Construct (Dail),cgggaggaac gaggcgttgn
+SEQ ID NO 22,DNA,Artificial Sequence,Synthetic Construct (Dail),cgggaggaag getagetaca acggaggggtgn
+SEQ ID NO 23,DNA,Homo aaplena,target site for Dz9 Al261 (9+9),gactgtctca tgactgcaa
+SEQ ID NO 24,DNA,Homo aaplena,target site for Dzi0 Al273 (9+9),actgcaaaga tggaaacga
+SEQ ID NO 25,DNA,Homo aaplena,target site for Dz11 Al289 (9+9),cgacctctca tgaccatgc
+SEQ ID NO 26,DNA,Homo aaplena,target site for Dz12 Al295 (9+9),tctatgaega tgccctcaa
+SEQUENCE ID,Type,Organism,Description,Sequence
+SEQ ID NO 27,DWA,Home eaplena,target site for Dzi3 G1311 (9+9),caeegectcg ttcctcccg
+SEQ ID NO 28,DWA,Home eaplena,target site for Dzi4 Al498 (9+9),gagcgctga taatccagt
+SEQ ID NO 29,DWA,Home eaplena,target site for Dzi5 Al501 (9+9),cgctgataa tccagtcca
+SEQ ID NO 30,DWA,Home eaplena c-Jun mRNA,,caacgctucg uuccucccg
+SEQ ID NO 31,DWA,Home eaplena,,(No sequence provided)
