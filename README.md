@@ -8,3 +8,11 @@ The following tools need to be present in the environment, e.g. via a respective
 - Python v3 (python)
 - IntaRNA (intarna)
 - RNAplfold (viennarna)
+
+
+## Data sets
+
+in the end we have the following data sets:
+
+- `LA=16, RA=7, T=23` : SARS
+- `LA=9, RA=8, T=37` : HPV, BCL
