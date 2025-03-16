@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -10,6 +11,9 @@ import sys
 
 # Load dataset
 data_path = sys.argv[1]
+output_dir = sys.argv[2]  # Directory to save results
+os.makedirs(output_dir, exist_ok=True)  # Ensure output directory exists
+
 df = pd.read_csv(data_path)
 
 # Ensure target column 'Y' exists
@@ -20,6 +24,16 @@ if target_column not in df.columns:
 # Separate features and target
 X = df.drop(columns=[target_column])
 y = df[target_column]
+
+# Identify columns starting with 'pumin'
+pumin_features = [col for col in X.columns if col.startswith("pumin")]
+
+# Define specific 'pumin' features to remove separately
+specific_pumin_features = ["pumin1_4u", "pumin1_4d", "pumin5_8u", "pumin5_8d"]
+
+# Create two filtered datasets
+X_filtered = X.drop(columns=pumin_features)  # Remove all 'pumin' features
+X_filtered_specific = X.drop(columns=specific_pumin_features, errors='ignore')  # Remove only specific ones
 
 # Define models to evaluate
 models = {
@@ -67,6 +81,7 @@ def evaluate_model(model, X, y, skf):
         "shap_values": np.mean(shap_values, axis=0)
     }
 
+# Full feature set evaluation
 full_feature_results = {}
 for model_name, model in models.items():
     result = evaluate_model(model, X, y, skf)
@@ -74,6 +89,7 @@ for model_name, model in models.items():
     results.append([model_name, "All Features", *result.values()])
     shap_results.append([model_name, "All Features", *result["shap_values"]])
 
+# Leave-one-feature-out analysis
 for feature in X.columns:
     X_reduced = X.drop(columns=[feature])
     for model_name, model in models.items():
@@ -81,10 +97,21 @@ for feature in X.columns:
         results.append([model_name, f"Without {feature}", *result.values()])
         shap_results.append([model_name, f"Without {feature}", *result["shap_values"]])
 
-output_path = "./HPV-SARS-BCL/comparition_results.csv"
-pd.DataFrame(results, columns=["Model", "Feature Set", "Accuracy Mean", "Accuracy Std", "Precision Mean", "Precision Std", "Recall Mean", "Recall Std", "F1 Mean", "F1 Std", "SHAP Values"]).to_csv(output_path, index=False)
+# Run excluding only pumin1_4u, pumin1_4d, pumin5_8u, pumin5_8d
+for model_name, model in models.items():
+    result = evaluate_model(model, X_filtered_specific, y, skf)
+    results.append([model_name, "Without Pumin1_4u, Pumin1_4d, Pumin5_8u, Pumin5_8d", *result.values()])
+    shap_results.append([model_name, "Without Pumin1_4u, Pumin1_4d, Pumin5_8u, Pumin5_8d", *result["shap_values"]])
 
-shap_output_path = "./HPV-SARS-BCL/SHAP_results.csv"
+
+# Save results in the specified output directory
+output_path = os.path.join(output_dir, "comparition_results.csv")
+shap_output_path = os.path.join(output_dir, "SHAP_results.csv")
+
+pd.DataFrame(results, columns=["Model", "Feature Set", "Accuracy Mean", "Accuracy Std", 
+                               "Precision Mean", "Precision Std", "Recall Mean", "Recall Std", 
+                               "F1 Mean", "F1 Std", "SHAP Values"]).to_csv(output_path, index=False)
+
 pd.DataFrame(shap_results, columns=["Model", "Feature Set"] + list(X.columns)).to_csv(shap_output_path, index=False)
 
 print(f"Results saved to {output_path}")
