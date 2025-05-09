@@ -1,3 +1,0 @@
-motifs=AU,GU
-LA=16
-RA=7
