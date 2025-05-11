@@ -100,7 +100,7 @@ TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTG
          - **LA**: Left binding arm length of the DNAzyme.
          - **RA**: Right binding arm length of the DNAzyme.
          - **CS**: The cleavage site dinucleotide of DNAzyme.
-         - **CS_index**: The name of target site and the index of cleavage site. 
+         - **CS_index**: The name of target file and the index of cleavage site. 
          - **Tem**: Temperature of the DNAzyme reaction.
          - **CA**: Catalytic core sequence of the DNAzym
          
