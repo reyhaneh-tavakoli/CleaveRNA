@@ -76,7 +76,6 @@ TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTG
          
      - **Target_screen mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites 
        index that given, and then the feature table is generated for that region.
-       all the candidate.
  
        - You need to provide the parameter file in CSV format and using this command line option
        ```[bash]
@@ -96,13 +95,8 @@ TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTG
        - In this parameter file, each row is the required parameter for designing spesific DNAzyme that targets the defined index on the target 
          sequnce.
          
-       - Column Definitions:
-         - **LA**: Left binding arm length of the DNAzyme.
-         - **RA**: Right binding arm length of the DNAzyme.
-         - **CS**: The cleavage site dinucleotide of DNAzyme.
-         - **CS_index**: The name of target file and the index of cleavage site. 
-         - **Tem**: Temperature of the DNAzyme reaction.
-         - **CA**: Catalytic core sequence of the DNAzym
+       - Column Definition:
+         - **CS_index**: The name of target file and the index of cleavage site.
          
        #### 📎 Copyable HPV-BCL (HPBC) default parameter file
        ```csv
@@ -111,7 +105,66 @@ TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTG
         10,15,CC,5.fasta:15,37,ggcuagcuacaacga
 
        ```      
+     - **Target_check mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites of 
+       defined target region, and then the feature table is generated for that region.
+       
+ 
+       - You need to provide the parameter file in CSV format and using this command line option
+       ```[bash]
+       --feature_mode target_check --params test_target_check.csv
+       ```
+       - Example of parameter file:
+       - In this mode the parameter file contains one extra column (Start_End_Index) that defines the target region index.
 
+       #### 📊 Data Table (Formatted View)
+       
+       | LA | RA | CS | Start_End_Index          | Tem         | CA               |
+       |----|----|----|--------------------------|-------------|------------------|
+       | 10 | 15 | AC | target_1.fasta:10-45     | 37          | ggcuagcuacaacga  |
+       | 10 | 15 | AC | target_2.fasta:50-100    | 37          | ggcuagcuacaacga  |
+
+       ---
+       - In this parameter file, each row is the required parameter for designing the DNAzymes that target the defined sites of target 
+         sequnce.
+         
+       - Column Definition:
+         - **Start_End_Index**: The index of the desired region on the target site sequences. 
+   
+         
+       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
+       ```csv
+        LA,RA,CS,Start_End_Index,Tem,CA
+        10,15,AC,1.fasta:10-45,37,ggcuagcuacaacga
+        10,15,AC,5.fasta:50-100,37,ggcuagcuacaacga
+       ```
+     -**specific_query mode**: In this mode, the DNAzyme sequence parameters are given and the features are just generated for the them.
+         - You need to provide the parameter file in CSV format and using this command line option
+       ```[bash]
+       --feature_mode specific_query --params test_specific_query.csv
+       ```
+       - Example of parameter file:
+       - In this mode the parameter file contains one extra column (Start_End_Index) that defines the target region index.
+
+       #### 📊 Data Table (Formatted View)
+       
+       | LA | RA | CS | Start_End_Index          | Tem         | CA               |
+       |----|----|----|--------------------------|-------------|------------------|
+       | 10 | 15 | AC | target_1.fasta:10-45     | 37          | ggcuagcuacaacga  |
+       | 10 | 15 | AC | target_2.fasta:50-100    | 37          | ggcuagcuacaacga  |
+
+       ---
+       - In this parameter file, each row is the required parameter for designing the DNAzymes that target the defined sites of target 
+         sequnce.
+         
+       - Column Definition:
+         - **Start_End_Index**: The index of the desired region on the target site sequences. 
+   
+         
+       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
+       ```csv
+        LA,RA,CS,Start_End_Index,Tem,CA
+        10,15,AC,1.fasta:10-45,37,ggcuagcuacaacga
+        10,15,AC,5.fasta:50-100,37,ggcuagcuacaacga
 
 
 
