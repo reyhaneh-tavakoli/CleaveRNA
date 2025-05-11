@@ -30,9 +30,10 @@ TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTG
 
 - The CleaveRNA tool contains two main modules that users can select based on the purpose of evaluation. These modules are related to both feature file and train file generation. 
 
-- Feature generation contains four modes:
-     - **Default**: In this mode, first the DNAzyme sequences are designed based on the given parameters then the feature table is generated for 
-       all the candidate cleavage sites on the target.
+- Feature generation contains four modes: default, target_screen, target_check and specific_query.
+
+     - **Default mode**: In this mode, first the DNAzyme sequences are designed based on the given parameters then the feature table is generated 
+       for all the candidate cleavage sites on the target.
        
        - You need to provide the parameter file in CSV format and using this command line option
        ```[bash]
@@ -52,23 +53,65 @@ TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTG
        - Column Definitions:
          - **LA**: Left binding arm length of the DNAzyme.
          - **RA**: Right binding arm length of the DNAzyme.
-         - **CS**: The cleavage sites dinucleotide of DNAzyme.
+         - **CS**: The cleavage sites dinucleotide of DNAzyme. In this example the catalytic core of 10-23 DNAzyme is given.[Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157)
          - **Tem**: Temperature of the DNAzyme reaction.
          - **CA**: Catalytic core sequence of the DNAzyme.
 
       
-       - If you want to select the SARS-CoV-2 model, just save it in CSV format.
+       - If you want to select the SARS-CoV-2 model , just save it in CSV format.
           (using `--feature_mode default --params SARS_default.csv` )
          
        #### 📎 Copyable HPV-BCL (HPBC) default parameter file
        ```csv
        LA,RA,CS,Tem,CA
        9,8,"AU,GU,AC,GC",37,ggcuagcuacaacga
-       ```      
+       ```
+        - This parameters extracted based on the related articles: [Nature Chem 2021](https://doi.org/10.1038/s41557-021-00645-x), [Chemistry Europe 2023](https://doi.org/10.1002/chem.202300075)
        #### 📎 Copyable SARS-CoV-2 (SARS) default parameter file
        ```csv
        LA,RA,CS,Tem,CA
        16,7,"AU,GU",23,ggcuagcuacaacga
        ```
-     - **Default**: In this mode, first the DNAzyme sequences are designed based on the given parameters then the feature table is generated for 
-       all the candidate c
+       - This parameters extracted based on the related article: [NAR. 2023](https://doi.org/10.1002/chem.202300075)
+         
+     - **Target_screen mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites 
+       index that given, and then the feature table is generated for that region.
+       all the candidate.
+ 
+       - You need to provide the parameter file in CSV format and using this command line option
+       ```[bash]
+       --feature_mode target_screen --params test_target_screen.csv
+       ```
+       - Example of parameter file:
+       - In this mode the parameter file contains one extra column (CS_index) that defines the index of each desired cleavage site.
+
+       #### 📊 Data Table (Formatted View)
+       
+       | LA | RA | CS | CS_index          | Tem         | CA               |
+       |----|----|----|-------------------|-------------|------------------|
+       | 10 | 15 | AC | target_1.fasta:17 | 37          | ggcuagcuacaacga  |
+       | 10 | 15 | CC | target_2.fasta:15 | 37          | ggcuagcuacaacga  |
+
+       ---
+       - In this parameter file, each row is the required parameter for designing spesific DNAzyme that targets the defined index on the target 
+         sequnce.
+         
+       - Column Definitions:
+         - **LA**: Left binding arm length of the DNAzyme.
+         - **RA**: Right binding arm length of the DNAzyme.
+         - **CS**: The cleavage site dinucleotide of DNAzyme.
+         - **CS_index**: The name of target site and the index of cleavage site. 
+         - **Tem**: Temperature of the DNAzyme reaction.
+         - **CA**: Catalytic core sequence of the DNAzym
+         
+       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
+       ```csv
+        LA,RA,CS,CS_index,Tem,CA
+        10,15,AC,1.fasta:17,37,ggcuagcuacaacga
+        10,15,CC,5.fasta:15,37,ggcuagcuacaacga
+
+       ```      
+
+
+
+
