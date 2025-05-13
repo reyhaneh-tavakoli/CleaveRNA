@@ -104,7 +104,7 @@ def construct_intarna_command(query_file, target_file, param_file, additional):
         + additional
     )
 
-def process_intarna_queries(target_file, query_file, lunp_file, param_file, left_arm, right_arm, output_prefix):
+def process_intarna_queries(target_file, query_file, lunp_file, param_file, left_arm, right_arm, output_prefix, cs_name):
     with open(target_file, "r") as f:
         sequence = ''.join([line.strip() for line in f if not line.startswith(">")])
     queries, all_results = [], []
@@ -120,7 +120,7 @@ def process_intarna_queries(target_file, query_file, lunp_file, param_file, left
                 seq += line.strip()
         if name and seq:
             queries.append((name, seq))
-    
+
     for i, (name, seq) in enumerate(queries, 1):
         tmp_q = f"temp_query_{i}.fasta"
         with open(tmp_q, "w") as f:
@@ -132,18 +132,18 @@ def process_intarna_queries(target_file, query_file, lunp_file, param_file, left
             region = f"{start}-{end}"
             cmds = [
                 construct_intarna_command(tmp_q, target_file, param_file,
-                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --tRegion {region} --out {output_prefix}_result_{i}_with_region.csv"),
+                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --tRegion {region} --out {output_prefix}_{cs_name}_result_{i}_with_region.csv"),
                 construct_intarna_command(tmp_q, target_file, param_file,
-                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --out {output_prefix}_result_{i}_without_region.csv"),
+                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --out {output_prefix}_{cs_name}_result_{i}_without_region.csv"),
                 construct_intarna_command(tmp_q, tmp_q, param_file,
-                    f"--out {output_prefix}_result_{i}_pairwise.csv")
+                    f"--out {output_prefix}_{cs_name}_result_{i}_pairwise.csv")
             ]
             for cmd in cmds:
                 subprocess.run(cmd, shell=True, check=True)
-            all_results.extend([f"{output_prefix}_result_{i}_with_region.csv", f"{output_prefix}_result_{i}_without_region.csv", f"{output_prefix}_result_{i}_pairwise.csv"])
+            all_results.extend([f"{output_prefix}_{cs_name}_result_{i}_with_region.csv", f"{output_prefix}_{cs_name}_result_{i}_without_region.csv", f"{output_prefix}_{cs_name}_result_{i}_pairwise.csv"])
         os.remove(tmp_q)
 
-    final_files = [f"{output_prefix}_Results_with_region.csv", f"{output_prefix}_Results_without_region.csv", f"{output_prefix}_Results_pairwise.csv"]
+    final_files = [f"{output_prefix}_{cs_name}_Results_with_region.csv", f"{output_prefix}_{cs_name}_Results_without_region.csv", f"{output_prefix}_{cs_name}_Results_pairwise.csv"]
     for out, res_group in zip(final_files, [all_results[i::3] for i in range(3)]):
         with open(out, "w") as outf:
             if res_group:
@@ -151,11 +151,11 @@ def process_intarna_queries(target_file, query_file, lunp_file, param_file, left
                 for r in res_group:
                     with open(r) as f: next(f); outf.write(f.read())
     for f in os.listdir():
-        if f.startswith(f"{output_prefix}_result_") and f.endswith(".csv"):
+        if f.startswith(f"{output_prefix}_{cs_name}_result_") and f.endswith(".csv"):
             os.remove(f)
-    
+
     # After creating the final files, merge numerical columns
-    merge_numerical_columns(output_prefix=output_prefix)
+    merge_numerical_columns(output_prefix=f"{output_prefix}_{cs_name}")
 
 def merge_numerical_columns(output_file=None, output_prefix=None):
     """
@@ -174,26 +174,31 @@ def merge_numerical_columns(output_file=None, output_prefix=None):
         f"{output_prefix}_Results_pairwise.csv"
     ]
 
+    # Ensure all id2 values are preserved during merging
     merged_data = pd.DataFrame()
 
     for idx, file in enumerate(result_files, start=1):
         if os.path.exists(file):
-            print(f"Processing file: {file}")  # Debug statement
+            print(f"Processing file: {file}")
             try:
                 data = pd.read_csv(file)
-                print(f"File content preview:\n{data.head()}\n")  # Debug statement
+                print(f"File content preview:\n{data.head()}\n")
 
                 if data.empty:
                     print(f"Warning: File {file} is empty")
                     continue
 
-                numerical_cols = data.select_dtypes(include=['number'])
+                numerical_cols = data.select_dtypes(include(['number']))
                 numerical_cols = numerical_cols.add_suffix(f"_{idx}")
 
                 if 'id2' in data.columns:
                     numerical_cols.insert(0, 'id2', data['id2'])
 
-                merged_data = pd.concat([merged_data, numerical_cols], axis=1)
+                # Merge while preserving all id2 values
+                if merged_data.empty:
+                    merged_data = numerical_cols
+                else:
+                    merged_data = pd.merge(merged_data, numerical_cols, on='id2', how='outer')
             except Exception as e:
                 print(f"Error processing file {file}: {str(e)}")
         else:
@@ -205,16 +210,12 @@ def merge_numerical_columns(output_file=None, output_prefix=None):
     else:
         print("✗ No numerical columns found to merge.")
 
-    # Create numerical_columns DataFrame properly
-    numerical_columns = merged_data.select_dtypes(include=['number'])
-    
-    # Ensure 'id2' is a single column before inserting
-    if 'id2' in merged_data.columns and isinstance(merged_data['id2'], pd.Series):
-        numerical_columns.insert(0, 'id2', merged_data['id2'])
+    # Save the merged data to the output file
+    if output_file:
+        merged_data.to_csv(output_file, index=False)
+        print(f"✓ Merged data saved to {output_file}")
     else:
-        print("Warning: 'id2' is not a single column or is missing.")
-
-
+        print("No output file specified for saving merged data.")
 
 def post_process_features(target_file, output_dir):
     """Perform additional feature processing after Feature.py completes"""
@@ -364,6 +365,16 @@ def post_process_features(target_file, output_dir):
             print("✗ Warning: 'id2' column not found in merged data")
 
         # Move the generated_merged_num.csv from the rnaplfold directory to the working directory
+        # Add debug logs to confirm file creation and movement
+        print(f"Checking if generated_merged_num.csv exists in {output_dir}...")
+        if os.path.exists(os.path.join(output_dir, "generated_merged_num.csv")):
+            print(f"✓ File generated_merged_num.csv found in {output_dir}")
+        else:
+            print(f"✗ File generated_merged_num.csv not found in {output_dir}")
+            raise FileNotFoundError("generated_merged_num.csv was not created.")
+
+        # Ensure file movement is logged
+        print(f"Attempting to move generated_merged_num.csv from {output_dir} to {os.getcwd()}...")
         source_file = os.path.join(output_dir, "generated_merged_num.csv")
         destination_file = os.path.join(os.getcwd(), "generated_merged_num.csv")
         if os.path.exists(source_file):
@@ -379,16 +390,118 @@ def main(args=None):
     if args is None:
         parser = argparse.ArgumentParser()
         parser.add_argument('--targets', required=True, help="Path to a directory or a comma-separated list of FASTA files")
-        parser.add_argument('--params', required=True, help="Path to the CSV file containing LA, RA, CS, temperature, and core")
-        parser.add_argument('--mode_feature', required=True, choices=['default', 'target_screen', 'target_check', 'specific_target'], help="Mode of operation")
-        parser.add_argument('--specific_csv', help="CSV file for specific_target mode")
+        parser.add_argument('--params', required=True, help="Path to the CSV file containing parameters")
+        parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
         args = parser.parse_args()
+
+    params_df = pd.read_csv(args.params)
+
+    # Validate required columns in the CSV file
+    required_columns = {'LA', 'RA', 'CS', 'Tem', 'CA'}
+    missing_columns = required_columns - set(params_df.columns)
+    if missing_columns:
+        raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
+
+    # Check for empty or unnamed columns
+    if '' in params_df.columns:
+        raise ValueError("The CSV file contains unnamed or empty column headers. Please fix the file.")
+
+    # Ensure no trailing commas or extra columns
+    params_df = params_df.loc[:, ~params_df.columns.str.contains('^Unnamed')]
+
+    if args.feature_mode == 'default':
+        if not {'LA', 'RA', 'CS', 'Tem', 'CA'}.issubset(params_df.columns):
+            raise ValueError("The CSV file must contain the columns: LA, RA, CS, Tem, and CA.")
+
+        for _, row in params_df.iterrows():
+            LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
+            for fasta_file in args.targets.split(','):
+                with open(fasta_file, 'r') as f:
+                    target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
+                motif_matches = find_CS(target_seq, CS)
+                queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+                query_file = f"queries_{os.path.basename(fasta_file).split('.')[0]}.fasta"
+                write_queries_to_fasta(queries, query_file)
+
+    elif args.feature_mode == 'target_screen':
+        if not {'LA', 'RA', 'CS', 'CS_index', 'Tem', 'CA'}.issubset(params_df.columns):
+            raise ValueError("The CSV file must contain the columns: LA, RA, CS, CS_index, Tem, and CA.")
+
+        for _, row in params_df.iterrows():
+            LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
+            target_file, position = row['CS_index'].split(':')
+            position = int(position)
+
+            # Use the original sequence for motif matching
+            with open(target_file, 'r') as f:
+                original_seq = ''.join([line.strip() for line in f if not line.startswith(">")])
+
+            sequence_at_position = original_seq[position:position + len(CS[0])]
+            print(f"Checking sequence at position {position}: {sequence_at_position} (expected: {CS[0]})")
+
+            # Debugging: Log the sequence around the specified position
+            sequence_context = original_seq[max(0, position - 5):position + len(CS[0]) + 5]
+            print(f"Context around position {position}: {sequence_context} (expected: {CS[0]})")
+
+            # Ensure target_seq is assigned before use
+            with open(target_file, 'r') as f:
+                target_seq = ''.join([line.strip() for line in f if not line.startswith(">")])
+
+            # Ensure case-insensitive comparison
+            if sequence_at_position.upper() != CS[0].upper():
+                print(f"Warning: CS {CS[0]} not found at position {position} in {target_file}. Found: {sequence_at_position}")
+                continue  # Skip this row and proceed with the next
+
+            motif_matches = [(position, position + len(CS[0]), CS[0], position, position + len(CS[0]))]
+            queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+            query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
+            write_queries_to_fasta(queries, query_file)
+
+    elif args.feature_mode == 'target_check':
+        if not {'LA', 'RA', 'CS', 'Start-End_Index', 'Tem', 'CA'}.issubset(params_df.columns):
+            raise ValueError("The CSV file must contain the columns: LA, RA, CS, Start-End_Index, Tem, and CA.")
+
+        for _, row in params_df.iterrows():
+            LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
+            target_file, region = row['Start-End_Index'].split(':')
+            start, end = map(int, region.split('-'))
+
+            with open(target_file, 'r') as f:
+                target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
+
+            motif_matches = find_CS(target_seq[start:end], CS)
+            queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+            query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
+            write_queries_to_fasta(queries, query_file)
+
+    elif args.feature_mode == 'specific_query':
+        if not {'LA_seq', 'RA_seq', 'CS_Index_query', 'Tem', 'CA'}.issubset(params_df.columns):
+            raise ValueError("The CSV file must contain the columns: LA_seq, RA_seq, CS_Index_query, Tem, and CA.")
+
+        for _, row in params_df.iterrows():
+            LA_seq, RA_seq, CS, temperature, core = row['LA_seq'], row['RA_seq'], row['CS_Index_query'].split(':'), float(row['Tem']), row['CA']
+            target_file, position = CS[0], int(CS[1])
+
+            with open(target_file, 'r') as f:
+                target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
+
+            if target_seq[position:position + len(CS[0])] != CS[0]:
+                raise ValueError(f"CS {CS[0]} not found at position {position} in {target_file}.")
+
+            query_seq = f"{LA_seq}{core}{RA_seq}"
+            query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
+            write_queries_to_fasta([(f"{CS[0]}-{position}", query_seq)], query_file)
+
+    else:
+        raise ValueError("Invalid feature mode specified.")
+
+    print("Query generation completed for all modes.")
 
     args.cfg = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
 
     params_df = pd.read_csv(args.params)
-    if not {'LA', 'RA', 'CS', 'temperature', 'core'}.issubset(params_df.columns):
-        print("The CSV file must contain the columns: LA, RA, CS, temperature, and core.")
+    if not {'LA', 'RA', 'CS', 'Tem', 'CA'}.issubset(params_df.columns):
+        print("The CSV file must contain the columns: LA, RA, CS, Tem, and CA.")
         return
 
     if os.path.isdir(args.targets):
@@ -404,8 +517,8 @@ def main(args=None):
         LA = int(row['LA'])
         RA = int(row['RA'])
         CS = row['CS'].split(',')
-        temperature = float(row['temperature'])
-        core = row['core']
+        temperature = float(row['Tem'])
+        core = row['CA']
 
         for fasta_file in fasta_files:
             print(f"\nProcessing file: {fasta_file}")
@@ -416,10 +529,10 @@ def main(args=None):
             lunp_file = run_rnaplfold(fasta_file, LA, RA, output_dir, temperature)
             unpaired_probs = parse_rnaplfold_output(lunp_file)
 
-            if args.mode_feature == 'default':
+            if args.feature_mode == 'default':
                 motif_matches = find_CS(target_seq, CS)
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
-            elif args.mode_feature == 'target_screen':
+            elif args.feature_mode == 'target_screen':
                 # Parse the CS_index column to get the target file name and the CS index
                 if 'CS_index' not in row:
                     raise ValueError("For target_screen mode, the CSV file must contain a 'CS_index' column with the format 'target_file:CS_index' (e.g., '1.fasta:17').")
@@ -440,7 +553,7 @@ def main(args=None):
                 print(f"Screening CS motif '{motif}' at position {position} in the target sequence of {target_file_name}.")
                 motif_matches = [(position, position + len(motif), motif, position, position + len(motif))]
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
-            elif args.mode_feature == 'target_check':
+            elif args.feature_mode == 'target_check':
                 # Parse the Start_End_target column to get the target file name and the start-end positions
                 if 'Start_End_target' not in row:
                     raise ValueError("For target_check mode, the CSV file must contain a 'Start_End_target' column with the format 'target_file:start-end' (e.g., '1.fasta:50-100').")
@@ -466,7 +579,7 @@ def main(args=None):
                 print(f"Checking target region from position {start} to {end} in the target sequence of {target_file_name}.")
                 motif_matches = [(start, end, "region", start, end)]
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
-            elif args.mode_feature == 'specific_target':
+            elif args.feature_mode == 'specific_target':
                 if not args.specific_csv:
                     raise ValueError("You must provide a CSV file with --specific_csv for specific_target mode.")
                 process_specific_target(args.specific_csv, output_dir)
@@ -478,7 +591,7 @@ def main(args=None):
             print(f"Generated {len(queries)} queries to {query_file}")
 
             output_prefix = os.path.basename(fasta_file).split('.')[0]
-            process_intarna_queries(fasta_file, query_file, lunp_file, args.cfg, LA, RA, output_prefix)
+            process_intarna_queries(fasta_file, query_file, lunp_file, args.cfg, LA, RA, output_prefix, CS[0])
             
             # Call post_process_features for each file
             post_process_features(fasta_file, output_dir)

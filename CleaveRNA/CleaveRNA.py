@@ -32,10 +32,12 @@ def report_file_status(file_path, description):
 def train(args):
     # Ensure Feature.py is executed to generate the required file
     print("Running Feature.py to generate 'generated_merged_num.csv'...")
-    feature_command = f"python3 Feature.py --targets {args.targets} --params {args.params} --mode_feature {args.mode_feature}"
+    # Convert the list of targets to a comma-separated string
+    targets_arg = ','.join(args.targets)
+    feature_command = f"python3 Feature.py --targets {targets_arg} --params {args.params} --feature_mode {args.feature_mode}"
     try:
         subprocess.run(feature_command, shell=True, check=True, cwd=os.getcwd())
-        print("Feature.py executed successfully.")
+        print("Feature.pyI executed successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error: Feature.py execution failed with error: {e}")
         sys.exit(1)
@@ -238,9 +240,9 @@ def train(args):
 def main():
     try:
         parser = argparse.ArgumentParser()
-        parser.add_argument('--targets', required=True, help="Path to a directory or a comma-separated list of FASTA files")
+        parser.add_argument('--targets', required=True, nargs='+', help="Path to one or more FASTA files")
         parser.add_argument('--params', required=True, help="Path to the CSV file containing LA, RA, CS, temperature, and core")
-        parser.add_argument('--mode_feature', required=True, choices=['default', 'target_screen', 'target_check', 'specific_target'], help="Mode of operation")
+        parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_target'], help="Mode of operation")
         parser.add_argument('--specific_csv', help="CSV file for specific_target mode")
         parser.add_argument('--default_train_file', help="Prefix of the model name for default training")
         parser.add_argument('--user_train_file', help="Path to user-provided training file")
@@ -249,21 +251,22 @@ def main():
         # Debugging: Print parsed arguments
         print("Parsed arguments:", args)
 
-        # Validate file paths
-        if not os.path.exists(args.targets):
-            print(f"Error: Targets file or directory '{args.targets}' does not exist.")
-            sys.exit(1)
+        # Validate each target file in the list
+        for target in args.targets:
+            if not os.path.exists(target):
+                print(f"Error: Target file '{target}' does not exist.")
+                sys.exit(1)
 
         if not os.path.exists(args.params):
             print(f"Error: Parameters file '{args.params}' does not exist.")
             sys.exit(1)
 
-        if args.mode_feature == 'specific_target' and args.specific_csv and not os.path.exists(args.specific_csv):
+        if args.feature_mode == 'specific_target' and args.specific_csv and not os.path.exists(args.specific_csv):
             print(f"Error: Specific CSV file '{args.specific_csv}' does not exist.")
             sys.exit(1)
 
         # Debugging: Print mode-specific logic
-        print(f"Running in mode: {args.mode_feature}")
+        print(f"Running in mode: {args.feature_mode}")
         if args.specific_csv:
             print(f"Using specific CSV: {args.specific_csv}")
 
