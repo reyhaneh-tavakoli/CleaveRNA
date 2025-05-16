@@ -132,18 +132,39 @@ def process_intarna_queries(target_file, query_file, lunp_file, param_file, left
             region = f"{start}-{end}"
             cmds = [
                 construct_intarna_command(tmp_q, target_file, param_file,
-                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --tRegion {region} --out {output_prefix}_{cs_name}_result_{i}_with_region.csv"),
+                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --tRegion {region} --out {output_prefix}_result_{i}_with_region.csv"),
                 construct_intarna_command(tmp_q, target_file, param_file,
-                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --out {output_prefix}_{cs_name}_result_{i}_without_region.csv"),
+                    f"--tAcc P --tIntLenMax {total_len} --tAccFile {lunp_file} --out {output_prefix}_result_{i}_without_region.csv"),
                 construct_intarna_command(tmp_q, tmp_q, param_file,
-                    f"--out {output_prefix}_{cs_name}_result_{i}_pairwise.csv")
+                    f"--out {output_prefix}_result_{i}_pairwise.csv")
             ]
             for cmd in cmds:
-                subprocess.run(cmd, shell=True, check=True)
-            all_results.extend([f"{output_prefix}_{cs_name}_result_{i}_with_region.csv", f"{output_prefix}_{cs_name}_result_{i}_without_region.csv", f"{output_prefix}_{cs_name}_result_{i}_pairwise.csv"])
+                try:
+                    subprocess.run(cmd, shell=True, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error executing IntaRNA command: {cmd}\n{e}")
+                    continue
+
+            # Check if the expected files were created
+            expected_files = [
+                f"{output_prefix}_result_{i}_with_region.csv",
+                f"{output_prefix}_result_{i}_without_region.csv",
+                f"{output_prefix}_result_{i}_pairwise.csv"
+            ]
+            for file in expected_files:
+                if os.path.exists(file):
+                    all_results.append(file)
+                else:
+                    print(f"Warning: Expected file {file} was not created.")
         os.remove(tmp_q)
 
-    final_files = [f"{output_prefix}_{cs_name}_Results_with_region.csv", f"{output_prefix}_{cs_name}_Results_without_region.csv", f"{output_prefix}_{cs_name}_Results_pairwise.csv"]
+    # Correcting the file naming logic to use the correct file names
+    final_files = [
+        f"{output_prefix}_Results_with_region.csv",
+        f"{output_prefix}_Results_without_region.csv",
+        f"{output_prefix}_Results_pairwise.csv"
+    ]
+
     for out, res_group in zip(final_files, [all_results[i::3] for i in range(3)]):
         with open(out, "w") as outf:
             if res_group:
@@ -151,58 +172,83 @@ def process_intarna_queries(target_file, query_file, lunp_file, param_file, left
                 for r in res_group:
                     with open(r) as f: next(f); outf.write(f.read())
     for f in os.listdir():
-        if f.startswith(f"{output_prefix}_{cs_name}_result_") and f.endswith(".csv"):
+        if f.startswith(f"{output_prefix}_result_") and f.endswith(".csv"):
             os.remove(f)
 
-    # After creating the final files, merge numerical columns
-    merge_numerical_columns(output_prefix=f"{output_prefix}_{cs_name}")
+    # Collect all result files for all targets
+    all_result_files = []
+    for file in os.listdir():
+        if file.endswith("_Results_with_region.csv") or \
+           file.endswith("_Results_without_region.csv") or \
+           file.endswith("_Results_pairwise.csv"):
+            all_result_files.append(file)
 
-def merge_numerical_columns(output_file=None, output_prefix=None):
+    # Extract unique prefixes from the result files
+    unique_prefixes = list(set(file.rsplit("_Results", 1)[0] for file in all_result_files))
+
+    # Correctly define the result files for each prefix
+    for prefix in unique_prefixes:
+        result_files = {
+            "with_region": f"{prefix}_Results_with_region.csv",
+            "without_region": f"{prefix}_Results_without_region.csv",
+            "pairwise": f"{prefix}_Results_pairwise.csv"
+        }
+
+        print(f"Processing prefix: {prefix}")
+
+        for key, file in result_files.items():
+            if not os.path.exists(file):
+                print(f"File not found: {file}")
+            else:
+                print(f"Found file: {file}")
+
+    # Merge numerical columns for all unique prefixes
+    merge_numerical_columns(output_file=None, output_prefixes=unique_prefixes)
+
+def merge_numerical_columns(output_file=None, output_prefixes=None):
     """
-    Merge numerical columns from multiple result files
+    Merge numerical columns from multiple result files for all provided prefixes.
     """
-    if output_prefix is None:
-        print("No output prefix provided for merge_numerical_columns, using default")
-        output_prefix = "5"  # This was the hardcoded default
+    if output_prefixes is None or not isinstance(output_prefixes, list):
+        print("No output prefixes provided for merge_numerical_columns, using default")
+        output_prefixes = ["5"]  # This was the hardcoded default
 
-    print(f"\nMerging numerical columns with prefix {output_prefix}...")
+    print(f"\nMerging numerical columns for prefixes: {', '.join(output_prefixes)}...")
 
-    # Define the specific files to merge based on the output_prefix
-    result_files = [
-        f"{output_prefix}_Results_with_region.csv",
-        f"{output_prefix}_Results_without_region.csv",
-        f"{output_prefix}_Results_pairwise.csv"
-    ]
-
-    # Ensure all id2 values are preserved during merging
     merged_data = pd.DataFrame()
 
-    for idx, file in enumerate(result_files, start=1):
-        if os.path.exists(file):
-            print(f"Processing file: {file}")
-            try:
-                data = pd.read_csv(file)
-                print(f"File content preview:\n{data.head()}\n")
+    for output_prefix in output_prefixes:
+        print(f"Processing prefix: {output_prefix}")
 
-                if data.empty:
-                    print(f"Warning: File {file} is empty")
-                    continue
+        # Define the specific files to merge based on the output_prefix
+        result_files = [
+            f"{output_prefix}_Results_with_region.csv",
+            f"{output_prefix}_Results_without_region.csv",
+            f"{output_prefix}_Results_pairwise.csv"
+        ]
 
-                numerical_cols = data.select_dtypes(include(['number']))
-                numerical_cols = numerical_cols.add_suffix(f"_{idx}")
+        for idx, file in enumerate(result_files, start=1):
+            if os.path.exists(file):
+                print(f"Processing file: {file}")  # Debug statement
+                try:
+                    data = pd.read_csv(file)
+                    print(f"File content preview:\n{data.head()}\n")  # Debug statement
 
-                if 'id2' in data.columns:
-                    numerical_cols.insert(0, 'id2', data['id2'])
+                    if data.empty:
+                        print(f"Warning: File {file} is empty")
+                        continue
 
-                # Merge while preserving all id2 values
-                if merged_data.empty:
-                    merged_data = numerical_cols
-                else:
-                    merged_data = pd.merge(merged_data, numerical_cols, on='id2', how='outer')
-            except Exception as e:
-                print(f"Error processing file {file}: {str(e)}")
-        else:
-            print(f"File not found: {file}")
+                    numerical_cols = data.select_dtypes(include=['number'])
+                    numerical_cols = numerical_cols.add_suffix(f"_{output_prefix}_{idx}")
+
+                    if 'id2' in data.columns:
+                        numerical_cols.insert(0, 'id2', data['id2'])
+
+                    merged_data = pd.concat([merged_data, numerical_cols], axis=0, ignore_index=True)
+                except Exception as e:
+                    print(f"Error processing file {file}: {str(e)}")
+            else:
+                print(f"File not found: {file}")
 
     if not merged_data.empty:
         print(f"✓ Merged numerical columns processed successfully.")
@@ -210,12 +256,21 @@ def merge_numerical_columns(output_file=None, output_prefix=None):
     else:
         print("✗ No numerical columns found to merge.")
 
-    # Save the merged data to the output file
-    if output_file:
-        merged_data.to_csv(output_file, index=False)
-        print(f"✓ Merged data saved to {output_file}")
+    # Create numerical_columns DataFrame properly
+    numerical_columns = merged_data.select_dtypes(include=['number'])
+
+    # Ensure 'id2' is a single column before inserting
+    if 'id2' in merged_data.columns:
+        numerical_columns.insert(0, 'id2', merged_data['id2'])
     else:
-        print("No output file specified for saving merged data.")
+        print("Warning: 'id2' is missing in the merged data.")
+
+    if output_file is None:
+        output_file = "generated_merged_num.csv"
+
+    numerical_columns.to_csv(output_file, index=False)
+    print(f"✓ Saved id2 and numerical columns to {output_file}")
+    print("Numerical data sample:\n", numerical_columns.head())
 
 def post_process_features(target_file, output_dir):
     """Perform additional feature processing after Feature.py completes"""
@@ -251,21 +306,25 @@ def post_process_features(target_file, output_dir):
         }
 
         for i, result_file in result_files.items():
+            print(f"Checking existence of result file: {result_file}")  # Added logging
             if not os.path.exists(result_file):
+                print(f"✗ Result file {result_file} not found.")  # Added logging
                 raise FileNotFoundError(f"✗ Result file {result_file} not found. Did IntaRNA run correctly?")
 
             print(f"✓ Processing {result_file}...")
             df = pd.read_csv(result_file)
-            print(f"Result file {i} sample:\n", df.head())
+            print(f"Result file {i} sample:\n{df.head()}")
 
             # Verify required columns exist
             required_cols = ['id2', 'seq2', 'seedE']
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
+                print(f"✗ Missing required columns in {result_file}: {missing_cols}")  # Added logging
                 raise ValueError(f"✗ Missing required columns in {result_file}: {missing_cols}")
 
-            # Keep only first solution per sequence pair
-            df = df.groupby('id2').first().reset_index()
+            # Ensure 'seedE' column is treated as a string before using .str accessor
+            if 'seedE' in df.columns:
+                df['seedE'] = df['seedE'].astype(str)
 
             # Number of seeds
             df['seedNumber'] = df['seedE'].str.count(':') + 1
@@ -275,7 +334,8 @@ def post_process_features(target_file, output_dir):
             df.columns = [f"{col}_{i}" for col in df.columns]
             out.append(df)
 
-        # Merge datasets
+        print("All result files processed successfully.")  # Added logging
+
         print("Merging datasets...")
         merged_data = out[0].merge(out[1], 
                                  left_on=["id2_1", "seq2_1"],
@@ -334,29 +394,22 @@ def post_process_features(target_file, output_dir):
 
             merged_data = merged_data.drop(columns=['pos'])
 
-        # Save outputs
         os.makedirs(output_dir, exist_ok=True)
 
-        # Save full merged data with file identifier
         full_output_path = os.path.join(output_dir, f"{base_filename}_generated_merged.csv")
         merged_data.to_csv(full_output_path, index=False)
         print(f"✓ Saved full merged data to {full_output_path}")
         print("Full data sample:\n", merged_data.head())
 
-        # Save id2 and all numerical columns to generated_merged_num.csv
         numeric_columns = merged_data.select_dtypes(include=['number'])
 
-        # Ensure id2 column is included 
         if 'id2' in merged_data.columns:
-            # Create a new DataFrame with id2 first, then all numeric columns
             numeric_with_id = pd.DataFrame()
             numeric_with_id['id2'] = merged_data['id2']
 
-            # Add all numeric columns
             for col in numeric_columns.columns:
                 numeric_with_id[col] = numeric_columns[col]
 
-            # Save to the output file
             num_output_path = os.path.join(output_dir, "generated_merged_num.csv")
             numeric_with_id.to_csv(num_output_path, index=False)
             print(f"✓ Saved id2 and numerical columns to {num_output_path}")
@@ -364,16 +417,13 @@ def post_process_features(target_file, output_dir):
         else:
             print("✗ Warning: 'id2' column not found in merged data")
 
-        # Move the generated_merged_num.csv from the rnaplfold directory to the working directory
-        # Add debug logs to confirm file creation and movement
-        print(f"Checking if generated_merged_num.csv exists in {output_dir}...")
+        print(f"Checking if generated_erged_num.csv exists in {output_dir}...")
         if os.path.exists(os.path.join(output_dir, "generated_merged_num.csv")):
             print(f"✓ File generated_merged_num.csv found in {output_dir}")
         else:
             print(f"✗ File generated_merged_num.csv not found in {output_dir}")
             raise FileNotFoundError("generated_merged_num.csv was not created.")
 
-        # Ensure file movement is logged
         print(f"Attempting to move generated_merged_num.csv from {output_dir} to {os.getcwd()}...")
         source_file = os.path.join(output_dir, "generated_merged_num.csv")
         destination_file = os.path.join(os.getcwd(), "generated_merged_num.csv")
@@ -386,6 +436,42 @@ def post_process_features(target_file, output_dir):
     except Exception as e:
         print(f"✗ Post-processing failed: {e}")
 
+def merge_all_generated_files(output_dir, final_output_file):
+    """
+    Merge all generated_merged_num.csv files from the output directories into one file.
+    """
+    print("\nMerging all generated_merged_num.csv files...")
+
+    # Find all generated_merged_num.csv files in the output directories
+    generated_files = []
+    for root, _, files in os.walk(output_dir):
+        for file in files:
+            if file == "generated_merged_num.csv":
+                generated_files.append(os.path.join(root, file))
+
+    if not generated_files:
+        print("✗ No generated_merged_num.csv files found to merge.")
+        return
+
+    print(f"Found {len(generated_files)} files to merge.")
+
+    # Merge all files into one DataFrame
+    merged_data = pd.DataFrame()
+    for file in generated_files:
+        try:
+            data = pd.read_csv(file)
+            merged_data = pd.concat([merged_data, data], ignore_index=True)
+        except Exception as e:
+            print(f"Error reading file {file}: {e}")
+
+    if merged_data.empty:
+        print("✗ No data to save after merging.")
+        return
+
+    # Save the merged data to the final output file
+    merged_data.to_csv(final_output_file, index=False)
+    print(f"✓ Merged data saved to {final_output_file}")
+
 def main(args=None):
     if args is None:
         parser = argparse.ArgumentParser()
@@ -396,17 +482,14 @@ def main(args=None):
 
     params_df = pd.read_csv(args.params)
 
-    # Validate required columns in the CSV file
     required_columns = {'LA', 'RA', 'CS', 'Tem', 'CA'}
     missing_columns = required_columns - set(params_df.columns)
     if missing_columns:
         raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
 
-    # Check for empty or unnamed columns
     if '' in params_df.columns:
         raise ValueError("The CSV file contains unnamed or empty column headers. Please fix the file.")
 
-    # Ensure no trailing commas or extra columns
     params_df = params_df.loc[:, ~params_df.columns.str.contains('^Unnamed')]
 
     if args.feature_mode == 'default':
@@ -418,10 +501,12 @@ def main(args=None):
             for fasta_file in args.targets.split(','):
                 with open(fasta_file, 'r') as f:
                     target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
-                motif_matches = find_CS(target_seq, CS)
-                queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
-                query_file = f"queries_{os.path.basename(fasta_file).split('.')[0]}.fasta"
-                write_queries_to_fasta(queries, query_file)
+                
+                for motif in CS:
+                    motif_matches = find_CS(target_seq, [motif])
+                    queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+                    query_file = f"queries_{os.path.basename(fasta_file).split('.')[0]}_{motif}.fasta"
+                    write_queries_to_fasta(queries, query_file)
 
     elif args.feature_mode == 'target_screen':
         if not {'LA', 'RA', 'CS', 'CS_index', 'Tem', 'CA'}.issubset(params_df.columns):
@@ -432,38 +517,40 @@ def main(args=None):
             target_file, position = row['CS_index'].split(':')
             position = int(position)
 
-            # Use the original sequence for motif matching
             with open(target_file, 'r') as f:
-                original_seq = ''.join([line.strip() for line in f if not line.startswith(">")])
+                original_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
 
-            sequence_at_position = original_seq[position:position + len(CS[0])]
-            print(f"Checking sequence at position {position}: {sequence_at_position} (expected: {CS[0]})")
+            # Ensure 'motif' is initialized before use
+            if 'CS' in row and row['CS']:
+                motif = row['CS'].split(',')[0]  # Extract the first motif from the CS column
+                converted_motif = motif.replace('T', 'U')
+                sequence_at_position = original_seq[position:position + len(converted_motif)]
+                # Correct the CS motif if it doesn't match the nucleotide in the target file
+                if sequence_at_position.upper() != converted_motif.upper():
+                    print(f"Warning: CS motif '{converted_motif}' does not match the sequence at position {position} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
+                    converted_motif = sequence_at_position.upper()
 
-            # Debugging: Log the sequence around the specified position
-            sequence_context = original_seq[max(0, position - 5):position + len(CS[0]) + 5]
-            print(f"Context around position {position}: {sequence_context} (expected: {CS[0]})")
+                # Proceed with the corrected CS motif
+                if sequence_at_position.upper() != converted_motif.upper():
+                    raise ValueError(f"CS motif '{converted_motif}' not found at position {position} in {target_file}.")
 
-            # Ensure target_seq is assigned before use
-            with open(target_file, 'r') as f:
-                target_seq = ''.join([line.strip() for line in f if not line.startswith(">")])
+            id2 = f"{position}-{position + len(motif)}"
+            if int(id2.split('-')[0]) != position:
+                raise ValueError(f"CS_index {position} does not match the first number of id2 {id2.split('-')[0]}.")
 
-            # Ensure case-insensitive comparison
-            if sequence_at_position.upper() != CS[0].upper():
-                print(f"Warning: CS {CS[0]} not found at position {position} in {target_file}. Found: {sequence_at_position}")
-                continue  # Skip this row and proceed with the next
-
-            motif_matches = [(position, position + len(CS[0]), CS[0], position, position + len(CS[0]))]
-            queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+            print(f"Validated CS motif and corrected id2 calculation: {id2}")
+            motif_matches = [(position, position + len(CS[0]), CS[0], position + 1, position + len(CS[0]))]
+            queries = prepare_sequences(original_seq, motif_matches, LA, RA, core)
             query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
             write_queries_to_fasta(queries, query_file)
 
     elif args.feature_mode == 'target_check':
-        if not {'LA', 'RA', 'CS', 'Start-End_Index', 'Tem', 'CA'}.issubset(params_df.columns):
-            raise ValueError("The CSV file must contain the columns: LA, RA, CS, Start-End_Index, Tem, and CA.")
+        if not {'LA', 'RA', 'CS', 'Start_End_Index', 'Tem', 'CA'}.issubset(params_df.columns):
+            raise ValueError("The CSV file must contain the columns: LA, RA, CS, Start_End_Index, Tem, and CA.")
 
         for _, row in params_df.iterrows():
             LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
-            target_file, region = row['Start-End_Index'].split(':')
+            target_file, region = row['Start_End_Index'].split(':')
             start, end = map(int, region.split('-'))
 
             with open(target_file, 'r') as f:
@@ -533,45 +620,50 @@ def main(args=None):
                 motif_matches = find_CS(target_seq, CS)
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
             elif args.feature_mode == 'target_screen':
-                # Parse the CS_index column to get the target file name and the CS index
                 if 'CS_index' not in row:
                     raise ValueError("For target_screen mode, the CSV file must contain a 'CS_index' column with the format 'target_file:CS_index' (e.g., '1.fasta:17').")
                 
-                # Extract the target file name and CS index from the CS_index column
                 cs_index_data = row['CS_index'].split(':')
                 if len(cs_index_data) != 2:
                     raise ValueError("Invalid format in CS_index column. Expected format: 'target_file:CS_index' (e.g., '1.fasta:17').")
                 
                 target_file_name, position = cs_index_data[0], int(cs_index_data[1])
                 if os.path.basename(fasta_file) != target_file_name:
-                    continue  # Skip this row if the target file does not match the current FASTA file
+                    continue
                 
                 if position < 0 or position >= len(target_seq):
                     raise ValueError(f"Invalid CS position {position} for file {target_file_name}. Must be between 0 and {len(target_seq) - 1}.")
                 
-                motif = CS[0]  # Assuming only one motif is provided in the CS column
-                print(f"Screening CS motif '{motif}' at position {position} in the target sequence of {target_file_name}.")
-                motif_matches = [(position, position + len(motif), motif, position, position + len(motif))]
+                motif = CS[0]
+                sequence_at_position = target_seq[position:position + len(motif)]
+                if sequence_at_position.upper() != motif.upper():
+                    print(f"Warning: CS motif '{motif}' does not match the sequence at position {position} in {target_file_name}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
+                    motif = sequence_at_position.upper()
+
+                id2 = f"{position}-{position + len(motif)}"
+                if int(id2.split('-')[0]) != position:
+                    raise ValueError(f"CS_index {position} does not match the first number of id2 {id2.split('-')[0]}.")
+
+                print(f"Validated CS motif and corrected id2 calculation: {id2}")
+
+                motif_matches = [(position, position + len(motif), motif, position + 1, position + len(motif))]
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
             elif args.feature_mode == 'target_check':
-                # Parse the Start_End_target column to get the target file name and the start-end positions
-                if 'Start_End_target' not in row:
-                    raise ValueError("For target_check mode, the CSV file must contain a 'Start_End_target' column with the format 'target_file:start-end' (e.g., '1.fasta:50-100').")
+                if 'Start_End_Index' not in row:
+                    raise ValueError("For target_check mode, the CSV file must contain a 'Start_End_Index' column with the format 'target_file:start-end' (e.g., '1.fasta:50-100').")
                 
-                # Extract the target file name and start-end positions from the Start_End_target column
-                start_end_data = row['Start_End_target'].split(':')
+                start_end_data = row['Start_End_Index'].split(':')
                 if len(start_end_data) != 2:
-                    raise ValueError("Invalid format in Start_End_target column. Expected format: 'target_file:start-end' (e.g., '1.fasta:50-100').")
+                    raise ValueError("Invalid format in Start_End_Index column. Expected format: 'target_file:start-end' (e.g., '1.fasta:50-100').")
                 
                 target_file_name, positions = start_end_data[0], positions[1]
                 if os.path.basename(fasta_file) != target_file_name:
-                    continue  # Skip this row if the target file does not match the current FASTA file
+                    continue
                 
-                # Extract the start and end positions
                 try:
                     start, end = map(int, positions.split('-'))
                 except ValueError:
-                    raise ValueError(f"Invalid start-end positions in Start_End_target column: {positions}. Expected format: 'start-end' (e.g., '50-100').")
+                    raise ValueError(f"Invalid start-end positions in Start_End_Index column: {positions}. Expected format: 'start-end' (e.g., '50-100').")
                 
                 if start < 0 or end >= len(target_seq) or start >= end:
                     raise ValueError(f"Invalid start-end positions {start}-{end} for file {target_file_name}. Must be within the bounds of the target sequence and start < end.")
@@ -593,16 +685,16 @@ def main(args=None):
             output_prefix = os.path.basename(fasta_file).split('.')[0]
             process_intarna_queries(fasta_file, query_file, lunp_file, args.cfg, LA, RA, output_prefix, CS[0])
             
-            # Call post_process_features for each file
             post_process_features(fasta_file, output_dir)
 
-    # Delete all generated query FASTA files at the end
     for file in os.listdir():
         if file.startswith("queries_") and file.endswith(".fasta"):
             os.remove(file)
             print(f"✓ Deleted {file}")
 
     print("\n✅ Feature generation completed successfully for all files!")
+
+    merge_all_generated_files(output_dir=".", final_output_file="all_generated_merged_num.csv")
 
 if __name__ == "__main__":
     main()
