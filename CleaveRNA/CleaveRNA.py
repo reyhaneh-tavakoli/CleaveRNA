@@ -7,12 +7,21 @@ import pandas as pd
 import numpy as np
 import subprocess
 
-def create_cfg_file():
-    """Generates the parameters.cfg file with predefined settings."""
-    cfg_content = """mode=M
+def create_cfg_file(params_file):
+    """Generates the parameters.cfg file with settings based on the given params CSV file."""
+    import pandas as pd
+
+    # Read the temperature from the params CSV file
+    params_df = pd.read_csv(params_file)
+    if 'Tem' not in params_df.columns:
+        raise ValueError("The 'Tem' column is missing in the parameters CSV file.")
+
+    temperature = params_df['Tem'].iloc[0]  # Use the first value in the 'Tem' column
+
+    cfg_content = f"""mode=M
 model=X
 energy=V
-temperature=37
+temperature={temperature}
 acc=C
 accW=150
 accL=100
@@ -21,7 +30,7 @@ outSep=,
 """
     with open("parameters.cfg", "w") as cfg_file:
         cfg_file.write(cfg_content)
-    print("Configuration file 'parameters.cfg' created.")
+    print("Configuration file 'parameters.cfg' created with temperature from params CSV.")
 
 def report_file_status(file_path, description):
     if os.path.exists(file_path):
@@ -272,7 +281,7 @@ def main():
 
         # Create parameters.cfg if it doesn't exist
         if not os.path.exists("parameters.cfg"):
-            create_cfg_file()
+            create_cfg_file(args.params)
 
         # Execute Feature processing, removing the placeholder print
         train(args)

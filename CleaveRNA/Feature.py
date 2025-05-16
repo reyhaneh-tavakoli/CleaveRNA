@@ -417,21 +417,12 @@ def post_process_features(target_file, output_dir):
         else:
             print("✗ Warning: 'id2' column not found in merged data")
 
-        print(f"Checking if generated_erged_num.csv exists in {output_dir}...")
+        print(f"Checking if generated_merged_num.csv exists in {output_dir}...")
         if os.path.exists(os.path.join(output_dir, "generated_merged_num.csv")):
             print(f"✓ File generated_merged_num.csv found in {output_dir}")
         else:
             print(f"✗ File generated_merged_num.csv not found in {output_dir}")
             raise FileNotFoundError("generated_merged_num.csv was not created.")
-
-        print(f"Attempting to move generated_merged_num.csv from {output_dir} to {os.getcwd()}...")
-        source_file = os.path.join(output_dir, "generated_merged_num.csv")
-        destination_file = os.path.join(os.getcwd(), "generated_merged_num.csv")
-        if os.path.exists(source_file):
-            os.rename(source_file, destination_file)
-            print(f"✓ Moved {source_file} to {destination_file}")
-        else:
-            print(f"✗ File {source_file} does not exist in the rnaplfold directory.")
 
     except Exception as e:
         print(f"✗ Post-processing failed: {e}")
@@ -440,26 +431,33 @@ def merge_all_generated_files(output_dir, final_output_file):
     """
     Merge all generated_merged_num.csv files from the output directories into one file.
     """
-    print("\nMerging all generated_merged_num.csv files...")
+    print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
-    # Find all generated_merged_num.csv files in the output directories
+    # Dynamically determine relevant directories based on the current run
+    relevant_directories = [
+        os.path.join(output_dir, d) for d in os.listdir(output_dir)
+        if os.path.isdir(os.path.join(output_dir, d)) and d.startswith("rnaplfold_output_")
+    ]
+
     generated_files = []
-    for root, _, files in os.walk(output_dir):
-        for file in files:
-            if file == "generated_merged_num.csv":
-                generated_files.append(os.path.join(root, file))
+    for directory in relevant_directories:
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file == "generated_merged_num.csv":
+                    generated_files.append(os.path.join(root, file))
 
     if not generated_files:
-        print("✗ No generated_merged_num.csv files found to merge.")
+        print("✗ No relevant generated_merged_num.csv files found to merge.")
         return
 
-    print(f"Found {len(generated_files)} files to merge.")
+    print(f"Found {len(generated_files)} relevant files to merge: {generated_files}")
 
     # Merge all files into one DataFrame
     merged_data = pd.DataFrame()
     for file in generated_files:
         try:
             data = pd.read_csv(file)
+            print(f"Processing file: {file} with {len(data)} rows.")
             merged_data = pd.concat([merged_data, data], ignore_index=True)
         except Exception as e:
             print(f"Error reading file {file}: {e}")
@@ -514,52 +512,67 @@ def main(args=None):
 
         for _, row in params_df.iterrows():
             LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
-            target_file, position = row['CS_index'].split(':')
-            position = int(position)
-
-            with open(target_file, 'r') as f:
-                original_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
-
-            # Ensure 'motif' is initialized before use
-            if 'CS' in row and row['CS']:
-                motif = row['CS'].split(',')[0]  # Extract the first motif from the CS column
-                converted_motif = motif.replace('T', 'U')
-                sequence_at_position = original_seq[position:position + len(converted_motif)]
-                # Correct the CS motif if it doesn't match the nucleotide in the target file
-                if sequence_at_position.upper() != converted_motif.upper():
-                    print(f"Warning: CS motif '{converted_motif}' does not match the sequence at position {position} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
-                    converted_motif = sequence_at_position.upper()
-
-                # Proceed with the corrected CS motif
-                if sequence_at_position.upper() != converted_motif.upper():
-                    raise ValueError(f"CS motif '{converted_motif}' not found at position {position} in {target_file}.")
-
-            id2 = f"{position}-{position + len(motif)}"
-            if int(id2.split('-')[0]) != position:
-                raise ValueError(f"CS_index {position} does not match the first number of id2 {id2.split('-')[0]}.")
-
-            print(f"Validated CS motif and corrected id2 calculation: {id2}")
-            motif_matches = [(position, position + len(CS[0]), CS[0], position + 1, position + len(CS[0]))]
-            queries = prepare_sequences(original_seq, motif_matches, LA, RA, core)
-            query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
-            write_queries_to_fasta(queries, query_file)
-
-    elif args.feature_mode == 'target_check':
-        if not {'LA', 'RA', 'CS', 'Start_End_Index', 'Tem', 'CA'}.issubset(params_df.columns):
-            raise ValueError("The CSV file must contain the columns: LA, RA, CS, Start_End_Index, Tem, and CA.")
-
-        for _, row in params_df.iterrows():
-            LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
-            target_file, region = row['Start_End_Index'].split(':')
+            target_file, region = row['CS_index'].split(':')
             start, end = map(int, region.split('-'))
 
             with open(target_file, 'r') as f:
                 target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
 
-            motif_matches = find_CS(target_seq[start:end], CS)
+            # Check the nucleotide content at the specified region
+            sequence_at_position = target_seq[start - 1:end]  # Adjust for 0-based indexing
+            motif = CS[0]
+
+            if sequence_at_position.upper() != motif.upper():
+                print(f"Warning: CS motif '{motif}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
+                motif = sequence_at_position.upper()
+
+            # Proceed with the corrected CS motif
+            id2 = f"{start}-{end}"
+            if int(id2.split('-')[0]) != start:
+                raise ValueError(f"CS_index {start} does not match the first number of id2 {id2.split('-')[0]}.")
+
+            print(f"Validated CS motif and corrected id2 calculation: {id2}")
+            motif_matches = [(start - 1, end, motif, start, end)]
             queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
             query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
             write_queries_to_fasta(queries, query_file)
+
+    elif args.feature_mode == 'target_check':
+        for _, row in params_df.iterrows():
+            LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
+            start_end_data = row['Start_End_Index'].split(':')
+            if len(start_end_data) != 2:
+                raise ValueError("Invalid format in Start_End_Index column. Expected format: 'target_file:start-end' (e.g., '1.fasta:50-100').")
+
+            target_file_name, positions = start_end_data[0], start_end_data[1]
+            try:
+                start, end = map(int, positions.split('-'))
+            except ValueError:
+                raise ValueError(f"Invalid start-end positions in Start_End_Index column: {positions}. Expected format: 'start-end' (e.g., '50-100').")
+
+            for fasta_file in args.targets.split(','):
+                if os.path.basename(fasta_file) != target_file_name:
+                    continue
+
+                with open(fasta_file, 'r') as f:
+                    target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
+
+                if start < 0 or end > len(target_seq) or start >= end:
+                    raise ValueError(f"Invalid start-end positions {start}-{end} for file {target_file_name}. Must be within the bounds of the target sequence and start < end.")
+
+                print(f"Checking target region from position {start} to {end} in the target sequence of {target_file_name}.")
+                motif_matches = find_CS(target_seq[start - 1:end], CS)
+
+                # Adjust positions to be relative to the full sequence
+                adjusted_matches = [
+                    (start + match[0], start + match[1], match[2], start + match[3], start + match[4])
+                    for match in motif_matches
+                ]
+
+                queries = prepare_sequences(target_seq, adjusted_matches, LA, RA, core)
+                query_file = f"queries_{os.path.basename(target_file_name).split('.')[0]}_{start}_{end}.fasta"
+                write_queries_to_fasta(queries, query_file)
+                print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
 
     elif args.feature_mode == 'specific_query':
         if not {'LA_seq', 'RA_seq', 'CS_Index_query', 'Tem', 'CA'}.issubset(params_df.columns):
@@ -627,26 +640,31 @@ def main(args=None):
                 if len(cs_index_data) != 2:
                     raise ValueError("Invalid format in CS_index column. Expected format: 'target_file:CS_index' (e.g., '1.fasta:17').")
                 
-                target_file_name, position = cs_index_data[0], int(cs_index_data[1])
+                target_file_name, region = cs_index_data[0], cs_index_data[1]
+                try:
+                    start, end = map(int, region.split('-'))
+                except ValueError:
+                    raise ValueError(f"Invalid CS_index format: {region}. Expected format: 'start-end' (e.g., '17-18').")
+
                 if os.path.basename(fasta_file) != target_file_name:
                     continue
-                
-                if position < 0 or position >= len(target_seq):
-                    raise ValueError(f"Invalid CS position {position} for file {target_file_name}. Must be between 0 and {len(target_seq) - 1}.")
+
+                if start < 0 or end > len(target_seq) or start >= end:
+                    raise ValueError(f"Invalid CS_index range {start}-{end} for file {target_file_name}. Must be within the bounds of the target sequence and start < end.")
                 
                 motif = CS[0]
-                sequence_at_position = target_seq[position:position + len(motif)]
+                sequence_at_position = target_seq[start: end]
                 if sequence_at_position.upper() != motif.upper():
-                    print(f"Warning: CS motif '{motif}' does not match the sequence at position {position} in {target_file_name}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
+                    print(f"Warning: CS motif '{motif}' does not match the sequence at position {start} in {target_file_name}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
                     motif = sequence_at_position.upper()
 
-                id2 = f"{position}-{position + len(motif)}"
-                if int(id2.split('-')[0]) != position:
-                    raise ValueError(f"CS_index {position} does not match the first number of id2 {id2.split('-')[0]}.")
+                id2 = f"{start}-{end}"
+                if int(id2.split('-')[0]) != start:
+                    raise ValueError(f"CS_index {start} does not match the first number of id2 {id2.split('-')[0]}.")
 
                 print(f"Validated CS motif and corrected id2 calculation: {id2}")
 
-                motif_matches = [(position, position + len(motif), motif, position + 1, position + len(motif))]
+                motif_matches = [(start, end, motif, start + 1, end)]
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
             elif args.feature_mode == 'target_check':
                 if 'Start_End_Index' not in row:
@@ -656,7 +674,7 @@ def main(args=None):
                 if len(start_end_data) != 2:
                     raise ValueError("Invalid format in Start_End_Index column. Expected format: 'target_file:start-end' (e.g., '1.fasta:50-100').")
                 
-                target_file_name, positions = start_end_data[0], positions[1]
+                target_file_name, positions = start_end_data[0], start_end_data[1]
                 if os.path.basename(fasta_file) != target_file_name:
                     continue
                 
@@ -669,8 +687,18 @@ def main(args=None):
                     raise ValueError(f"Invalid start-end positions {start}-{end} for file {target_file_name}. Must be within the bounds of the target sequence and start < end.")
                 
                 print(f"Checking target region from position {start} to {end} in the target sequence of {target_file_name}.")
-                motif_matches = [(start, end, "region", start, end)]
-                queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+                motif_matches = find_CS(target_seq[start - 1:end], CS)
+
+                # Adjust positions to be relative to the full sequence
+                adjusted_matches = [
+                    (start + match[0], start + match[1], match[2], start + match[3], start + match[4])
+                    for match in motif_matches
+                ]
+
+                queries = prepare_sequences(target_seq, adjusted_matches, LA, RA, core)
+                query_file = f"queries_{os.path.basename(target_file_name).split('.')[0]}_{start}_{end}.fasta"
+                write_queries_to_fasta(queries, query_file)
+                print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
             elif args.feature_mode == 'specific_target':
                 if not args.specific_csv:
                     raise ValueError("You must provide a CSV file with --specific_csv for specific_target mode.")
