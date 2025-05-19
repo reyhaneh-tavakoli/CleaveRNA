@@ -17,7 +17,7 @@ def run_rnaplfold(target_file, LA, RA, output_dir, temperature):
     os.makedirs(output_dir, exist_ok=True)  # Create a unique directory for each file
     u_length = LA + RA + 4
     target_file_path = os.path.abspath(target_file)
-    command = f"RNAplfold -W 150 -L 100 -u {u_length} -T {temperature} < {target_file_path}"
+    command = f"RNAplfold -W 150 -L 100 -u {u_length} -T {temperature} < \"{target_file_path}\""
     print(f"\nExecuting RNAplfold command: {command} in {output_dir}")
     
     try:
