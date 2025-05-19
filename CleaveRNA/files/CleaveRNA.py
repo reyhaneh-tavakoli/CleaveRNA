@@ -38,16 +38,6 @@ def report_file_status(file_path, description):
     else:
         print(f"Error: {description} was not generated.")
 
-def report_empty_file(file_path, description):
-    if os.path.exists(file_path):
-        if os.path.getsize(file_path) == 0:
-            print(f"Warning: {description} is empty and will be skipped: {file_path}.")
-            return True
-    else:
-        print(f"Warning: {description} does not exist: {file_path}.")
-        return True
-    return False
-
 def train(args):
     # Ensure Feature.py is executed to generate the required file
     print("Running Feature.py to generate 'all_generated_merged_num.csv'...")
@@ -77,17 +67,6 @@ def train(args):
             print(f"Error: Required files '{default_merged_file}' or '{target_file}' do not exist.")
             sys.exit(1)
 
-        # Check for empty result files
-        result_files = [
-            f"{model_name}_Results_with_region.csv",
-            f"{model_name}_Results_without_region.csv",
-            f"{model_name}_Results_pairwise.csv"
-        ]
-
-        for result_file in result_files:
-            if report_empty_file(result_file, "Result file"):
-                continue
-
         # Calculate mean and std for default_merged_file
         df_default = pd.read_csv(default_merged_file)
         mean_std = df_default.describe().loc[['mean', 'std']]
@@ -107,9 +86,7 @@ def train(args):
         # Balance target file
         df_target = pd.read_csv(target_file)
         np.random.seed(89273554)
-        df_balanced = df_target.groupby('Y', group_keys=False).apply(
-            lambda x: x.sample(df_target['Y'].value_counts().min(), random_state=89273554)
-        )
+        df_balanced = df_target.groupby('Y', group_keys=False).apply(lambda x: x.sample(df_target['Y'].value_counts().min()))
         balanced_file = f"{model_name}_balanced_target.csv"
         df_balanced.to_csv(balanced_file, index=False)
         report_file_status(balanced_file, "Balanced target")
@@ -274,8 +251,8 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument('--targets', required=True, nargs='+', help="Path to one or more FASTA files")
         parser.add_argument('--params', required=True, help="Path to the CSV file containing LA, RA, CS, temperature, and core")
-        parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
-        parser.add_argument('--specific_csv', help="CSV file for specific_query mode")
+        parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_target'], help="Mode of operation")
+        parser.add_argument('--specific_csv', help="CSV file for specific_target mode")
         parser.add_argument('--default_train_file', help="Prefix of the model name for default training")
         parser.add_argument('--user_train_file', help="Path to user-provided training file")
         args = parser.parse_args()
@@ -293,7 +270,7 @@ def main():
             print(f"Error: Parameters file '{args.params}' does not exist.")
             sys.exit(1)
 
-        if args.feature_mode == 'specific_query' and args.specific_csv and not os.path.exists(args.specific_csv):
+        if args.feature_mode == 'specific_target' and args.specific_csv and not os.path.exists(args.specific_csv):
             print(f"Error: Specific CSV file '{args.specific_csv}' does not exist.")
             sys.exit(1)
 

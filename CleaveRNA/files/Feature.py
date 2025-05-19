@@ -79,49 +79,20 @@ def write_queries_to_fasta(queries, query_file):
         for name, seq in queries:
             f.write(f">{name}\n{seq}\n")
 
-def process_specific_query(csv_file, output_dir):
-    """
-    Process specific_query mode by validating the CS motif and generating query files.
-    """
+def process_specific_target(csv_file, output_dir):
     df = pd.read_csv(csv_file)
-    if not {'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', 'CA'}.issubset(df.columns):
-        raise ValueError("The CSV file for specific_query mode must contain 'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', and 'CA' columns.")
-
+    if not {'name', 'sequence'}.issubset(df.columns):
+        raise ValueError("The CSV file for specific_target mode must contain 'name' and 'sequence' columns.")
+    
     os.makedirs(output_dir, exist_ok=True)  # Ensure the output directory exists
 
     for _, row in df.iterrows():
-        LA_seq = row['LA_seq']
-        RA_seq = row['RA_seq']
-        CS = row['CS']
-        CA = row['CA']
-        temperature = float(row['Tem'])
-        target_file, position = row['CS_Index_query'].split(':')
-        start, end = map(int, position.split('-'))
-
-        with open(target_file, 'r') as f:
-            target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
-
-        # Validate the CS motif
-        sequence_at_position = target_seq[start - 1:end]  # Adjust for 0-based indexing
-        if sequence_at_position.upper() != CS.upper():
-            print(f"Warning: CS motif '{CS}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
-            CS = sequence_at_position.upper()
-
-        # Generate the query sequence
-        comp = lambda s: ''.join(["AUCG"["UAGC".index(n)] for n in s][::-1])
-        query_seq = f"{comp(LA_seq)}{CA}{comp(RA_seq)}"
-
-        # Write the query to a FASTA file
-        query_file = os.path.join(output_dir, f"queries_{os.path.basename(target_file).split('.')[0]}_{start}_{end}.fasta")
+        query_name = row['name']
+        query_sequence = row['sequence']
+        query_file = os.path.join(output_dir, f"{query_name}.fasta")
         with open(query_file, "w") as f:
-            f.write(f">{CS}-{start}-{end}\n{query_seq}\n")
-
-        print(f"Generated query file: {query_file}")
-
-        # Run RNAplfold and process IntaRNA queries
-        output_prefix = os.path.basename(target_file).split('.')[0]
-        lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), f"rnaplfold_output_{output_prefix}", temperature)
-        process_intarna_queries(target_file, query_file, lunp_file, csv_file, len(LA_seq), len(RA_seq), output_prefix, CS)
+            f.write(f">{query_name}\n{query_sequence}\n")
+        print(f"Query FASTA file created: {query_file}")
 
 def construct_intarna_command(query_file, target_file, param_file, additional):
     return (
@@ -260,15 +231,11 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
             if os.path.exists(file):
                 print(f"Processing file: {file}")  # Debug statement
                 try:
-                    if os.stat(file).st_size == 0:  # Check if the file is empty
-                        print(f"Warning: File {file} is empty. Skipping.")
-                        continue
-
                     data = pd.read_csv(file)
                     print(f"File content preview:\n{data.head()}\n")  # Debug statement
 
                     if data.empty:
-                        print(f"Warning: File {file} contains no data. Skipping.")
+                        print(f"Warning: File {file} is empty")
                         continue
 
                     numerical_cols = data.select_dtypes(include=['number'])
@@ -289,20 +256,21 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
     else:
         print("✗ No numerical columns found to merge.")
 
+    # Create numerical_columns DataFrame properly
+    numerical_columns = merged_data.select_dtypes(include=['number'])
+
     # Ensure 'id2' is a single column before inserting
     if 'id2' in merged_data.columns:
-        numeric_columns = merged_data.select_dtypes(include=['number'])
-        numeric_columns.insert(0, 'id2', merged_data['id2'])
+        numerical_columns.insert(0, 'id2', merged_data['id2'])
     else:
         print("Warning: 'id2' is missing in the merged data.")
-        numeric_columns = merged_data.select_dtypes(include(['number']))
 
     if output_file is None:
         output_file = "generated_merged_num.csv"
 
-    numeric_columns.to_csv(output_file, index=False)
+    numerical_columns.to_csv(output_file, index=False)
     print(f"✓ Saved id2 and numerical columns to {output_file}")
-    print("Numerical data sample:\n", numeric_columns.head())
+    print("Numerical data sample:\n", numerical_columns.head())
 
 def post_process_features(target_file, output_dir):
     """Perform additional feature processing after Feature.py completes"""
@@ -512,32 +480,7 @@ def main(args=None):
 
     params_df = pd.read_csv(args.params)
 
-    # Initialize required_columns to avoid UnboundLocalError
-    required_columns = set()
-
-    if args.feature_mode == 'specific_query':
-        required_columns = {'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', 'CA'}
-        missing_columns = required_columns - set(params_df.columns)
-        if missing_columns:
-            raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
-
-    elif args.feature_mode == 'default':
-        required_columns = {'LA', 'RA', 'CS', 'Tem', 'CA'}
-        if not required_columns.issubset(params_df.columns):
-            raise ValueError("The CSV file must contain the columns: LA, RA, CS, Tem, and CA.")
-
-    elif args.feature_mode == 'target_screen':
-        required_columns = {'LA', 'RA', 'CS', 'CS_index', 'Tem', 'CA'}
-        missing_columns = required_columns - set(params_df.columns)
-        if missing_columns:
-            raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
-
-    elif args.feature_mode == 'target_check':
-        required_columns = {'LA', 'RA', 'CS', 'Start_End_Index', 'Tem', 'CA'}
-        missing_columns = required_columns - set(params_df.columns)
-        if missing_columns:
-            raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
-
+    required_columns = {'LA', 'RA', 'CS', 'Tem', 'CA'}
     missing_columns = required_columns - set(params_df.columns)
     if missing_columns:
         raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
@@ -556,7 +499,7 @@ def main(args=None):
             for fasta_file in args.targets.split(','):
                 with open(fasta_file, 'r') as f:
                     target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
-
+                
                 for motif in CS:
                     motif_matches = find_CS(target_seq, [motif])
                     queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
@@ -632,32 +575,22 @@ def main(args=None):
                 print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
 
     elif args.feature_mode == 'specific_query':
-        if not {'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', 'CA'}.issubset(params_df.columns):
-            raise ValueError("The CSV file must contain the columns: LA_seq, RA_seq, CS, CS_Index_query, Tem, and CA.")
+        if not {'LA_seq', 'RA_seq', 'CS_Index_query', 'Tem', 'CA'}.issubset(params_df.columns):
+            raise ValueError("The CSV file must contain the columns: LA_seq, RA_seq, CS_Index_query, Tem, and CA.")
 
         for _, row in params_df.iterrows():
-            LA_seq, RA_seq, CS, temperature, core = row['LA_seq'], row['RA_seq'], row['CS'], float(row['Tem']), row['CA']
-            target_file, position = row['CS_Index_query'].split(':')
-            start, end = map(int, position.split('-'))
+            LA_seq, RA_seq, CS, temperature, core = row['LA_seq'], row['RA_seq'], row['CS_Index_query'].split(':'), float(row['Tem']), row['CA']
+            target_file, position = CS[0], int(CS[1])
 
             with open(target_file, 'r') as f:
                 target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
 
-            sequence_at_position = target_seq[start - 1:end]  # Adjust for 0-based indexing
-
-            if sequence_at_position.upper() != CS.upper():
-                print(f"Warning: CS motif '{CS}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
-                CS = sequence_at_position.upper()
+            if target_seq[position:position + len(CS[0])] != CS[0]:
+                raise ValueError(f"CS {CS[0]} not found at position {position} in {target_file}.")
 
             query_seq = f"{LA_seq}{core}{RA_seq}"
-            query_file = f"queries_{os.path.basename(target_file).split('.')[0]}_{start}_{end}.fasta"
-            write_queries_to_fasta([(f"{CS}-{start}", query_seq)], query_file)
-
-            print(f"Generated query file: {query_file}")
-
-            output_prefix = os.path.basename(target_file).split('.')[0]
-            lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), f"rnaplfold_output_{output_prefix}", temperature)
-            process_intarna_queries(target_file, query_file, lunp_file, args.params, len(LA_seq), len(RA_seq), output_prefix, CS)
+            query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
+            write_queries_to_fasta([(f"{CS[0]}-{position}", query_seq)], query_file)
 
     else:
         raise ValueError("Invalid feature mode specified.")
@@ -766,11 +699,10 @@ def main(args=None):
                 query_file = f"queries_{os.path.basename(target_file_name).split('.')[0]}_{start}_{end}.fasta"
                 write_queries_to_fasta(queries, query_file)
                 print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
-
-            elif args.feature_mode == 'specific_query':
+            elif args.feature_mode == 'specific_target':
                 if not args.specific_csv:
-                    raise ValueError("You must provide a CSV file with --specific_csv for specific_query mode.")
-                process_specific_query(args.specific_csv, output_dir)
+                    raise ValueError("You must provide a CSV file with --specific_csv for specific_target mode.")
+                process_specific_target(args.specific_csv, output_dir)
                 continue
 
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
