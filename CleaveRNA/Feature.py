@@ -293,6 +293,10 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
     if 'id2' in merged_data.columns:
         numeric_columns = merged_data.select_dtypes(include=['number'])
         numeric_columns.insert(0, 'id2', merged_data['id2'])
+        if 'seq2' in merged_data.columns:
+            numeric_columns.insert(1, 'seq2', merged_data['seq2'])
+        else:
+            print("Warning: 'seq2' is missing in the merged data.")
     else:
         print("Warning: 'id2' is missing in the merged data.")
         numeric_columns = merged_data.select_dtypes(include(['number']))
@@ -301,7 +305,7 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
         output_file = "generated_merged_num.csv"
 
     numeric_columns.to_csv(output_file, index=False)
-    print(f"✓ Saved id2 and numerical columns to {output_file}")
+    print(f"✓ Saved id2, seq2, and numerical columns to {output_file}")
     print("Numerical data sample:\n", numeric_columns.head())
 
 def post_process_features(target_file, output_dir):

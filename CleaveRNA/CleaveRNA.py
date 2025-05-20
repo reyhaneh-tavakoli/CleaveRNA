@@ -6,6 +6,12 @@ from Feature import main as feature_main
 import pandas as pd
 import numpy as np
 import subprocess
+from sklearn.svm import SVC
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import pickle
 
 def create_cfg_file(params_file):
     """Generates the parameters.cfg file with settings based on the given params CSV file."""
@@ -50,6 +56,64 @@ def report_empty_file(file_path, description):
         print(f"Warning: {description} does not exist: {file_path}.")
         return True
     return False
+
+def train_and_save_svm(train_data_path, model_name, feature_set_name):
+    print(f"\nTraining SVM model for {model_name} using data from {train_data_path}")
+
+    df = pd.read_csv(train_data_path)
+    if 'Y' not in df.columns:
+        raise ValueError("Training data must include a target column named 'Y'.")
+
+    X_df = df.drop(columns=['Y'])
+    y = df['Y']
+
+    # Handle missing values
+    imputer = SimpleImputer(strategy='mean')
+    X = imputer.fit_transform(X_df)
+
+    # Scale the features
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+
+    # Train SVM
+    svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
+    svm.fit(X, y)
+
+    # Save model
+    model_file = f"{model_name}-{feature_set_name}-SVM.pkl"
+    with open(model_file, 'wb') as f:
+        pickle.dump({
+            'model': svm,
+            'scaler': scaler,
+            'imputer': imputer,
+            'feature_columns': X_df.columns.tolist()
+        }, f)
+    print(f"Saved trained model to {model_file}")
+
+    # Cross-validation
+    perform_cross_validation(X, y, model_name, feature_set_name)
+
+def perform_cross_validation(X, y, model_name, feature_set_name):
+    print(f"\nRunning 5-fold cross-validation for {model_name} ({feature_set_name})...")
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
+
+    scores = {'accuracy': [], 'precision': [], 'recall': [], 'f1': []}
+
+    for train_idx, test_idx in skf.split(X, y):
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+        svm.fit(X_train, y_train)
+        preds = svm.predict(X_test)
+
+        scores['accuracy'].append(accuracy_score(y_test, preds))
+        scores['precision'].append(precision_score(y_test, preds))
+        scores['recall'].append(recall_score(y_test, preds))
+        scores['f1'].append(f1_score(y_test, preds))
+
+    print("\nCross-validation results:")
+    for metric, values in scores.items():
+        print(f"{metric.capitalize()}: {np.mean(values):.3f} ± {np.std(values):.3f}")
 
 def train(args):
     # Ensure the output directory exists
@@ -164,6 +228,21 @@ def train(args):
         df_train[feature_set_2].to_csv(feature_set_2_file, index=False)
         report_file_status(feature_set_2_file, "Default ML train feature set 2")
 
+        # Ensure the Y column is included in the feature set files
+        df_train = pd.read_csv(merged_train_file)
+
+        # Add Y column to feature set 1
+        feature_set_1_with_y = feature_set_1 + ['Y']
+        feature_set_1_file = f"{model_name}_default_ML_train_feature_set_1.csv"
+        df_train[feature_set_1_with_y].to_csv(feature_set_1_file, index=False)
+        report_file_status(feature_set_1_file, "Default ML train feature set 1 with Y")
+
+        # Add Y column to feature set 2
+        feature_set_2_with_y = feature_set_2 + ['Y']
+        feature_set_2_file = f"{model_name}_default_ML_train_feature_set_2.csv"
+        df_train[feature_set_2_with_y].to_csv(feature_set_2_file, index=False)
+        report_file_status(feature_set_2_file, "Default ML train feature set 2 with Y")
+
         # Ensure proper standardization of columns in all_generated_merged_num.csv using HPBC_default_train_statistics.csv
         mean_std_file = "HPBC_default_train_statistics.csv"
         mean_std = pd.read_csv(mean_std_file, index_col=0)
@@ -189,6 +268,72 @@ def train(args):
         generated_feature_set_2_file = "generated_ML_test_feature_set_2.csv"
         df_standardized_generated[feature_set_2].to_csv(generated_feature_set_2_file, index=False)
         report_file_status(generated_feature_set_2_file, "Generated ML test feature set 2")
+
+        # Train and save SVM models for feature set 1 and feature set 2
+        train_and_save_svm(f"{model_name}_default_ML_train_feature_set_1.csv", model_name, "default_train_feature_set_1")
+        train_and_save_svm(f"{model_name}_default_ML_train_feature_set_2.csv", model_name, "default_train_feature_set_2")
+
+        # Predict for default train mode
+        for feature_set, pickle_file, test_file, output_file in [
+            ("default_train_feature_set_1", "HPBC-default_train_feature_set_1-SVM.pkl", "generated_ML_test_feature_set_1.csv", "feature_set_1_predicted.csv"),
+            ("default_train_feature_set_2", "HPBC-default_train_feature_set_2-SVM.pkl", "generated_ML_test_feature_set_2.csv", "feature_set_2_predicted.csv")
+        ]:
+            print(f"\nProcessing predictions for {feature_set}...")
+
+            # Load the pickle file
+            model_file = os.path.join(args.output_dir, pickle_file)
+            if not os.path.exists(model_file):
+                print(f"⚠ {model_file} not found. Skipping.")
+                continue
+
+            with open(model_file, 'rb') as f:
+                model_bundle = pickle.load(f)
+
+            model = model_bundle['model']
+            imputer = model_bundle['imputer']
+            feature_columns = model_bundle['feature_columns']
+
+            # Load the test feature set
+            test_file_path = os.path.join(args.output_dir, test_file)
+            if not os.path.exists(test_file_path):
+                print(f"⚠ {test_file_path} not found. Skipping.")
+                continue
+
+            df_test = pd.read_csv(test_file_path)
+            available_columns = [col for col in feature_columns if col in df_test.columns]
+            if not available_columns:
+                print(f"⚠ No matching feature columns found in {test_file_path}. Skipping.")
+                continue
+
+            # Create a DataFrame with all expected columns initialized to 0
+            X_full = pd.DataFrame(0, index=range(len(df_test)), columns=feature_columns)
+            for col in available_columns:
+                X_full[col] = df_test[col]
+
+            # Handle missing values
+            X_imputed = imputer.transform(X_full)
+            
+            # Standardize features using sklearn's StandardScaler instead of manual standardization
+            scaler = StandardScaler()
+            X_std = scaler.fit_transform(X_imputed)
+
+            # Predict using the model
+            y_pred = model.predict(X_std)
+            try:
+                y_proba = model.predict_proba(X_std)
+                reliability_score = y_proba[:, 1] if y_proba.shape[1] >= 2 else y_proba[:, 0]
+            except:
+                reliability_score = [None] * len(y_pred)
+
+            # Save only y_pred and reliability_score to the output file
+            result_df = pd.DataFrame({
+                'y_pred': y_pred,
+                'reliability_score': reliability_score
+            })
+
+            output_path = os.path.join(args.output_dir, f"{args.default_train_file}_{output_file}")
+            result_df.to_csv(output_path, index=False)
+            print(f"✓ Prediction result saved to {output_path}")
 
     elif args.user_train_file:
         model_name = args.user_train_file
@@ -284,6 +429,10 @@ def train(args):
         df_test_standardized = pd.read_csv(standardized_test_file)
         df_test_standardized[feature_set_2].to_csv(feature_set_2_file, index=False)
         report_file_status(feature_set_2_file, "User ML test feature set 2")
+
+        # Train and save SVM models for feature set 1 and feature set 2
+        train_and_save_svm(f"{model_name}_user_ML_train_feature_set_1.csv", model_name, "user_train_feature_set_1")
+        train_and_save_svm(f"{model_name}_user_ML_train_feature_set_2.csv", model_name, "user_train_feature_set_2")
 
     else:
         print("Error: Either --default_train_file or --user_train_file must be provided.")

@@ -19,7 +19,7 @@ start_time=$(date)
 # Default mode
 echo "Running in default mode..."
 output_dir=$(pwd)  # Use the current directory where the script is run
-python3 "$script_dir" --targets $TARGETS --params $PARAMS --feature_mode default --default_train_file $DEFAULT_TRAIN_FILE --output_dir "$output_dir"
+python3 "$script_dir" --targets $TARGETS --params $PARAMS --feature_mode default --default_train_file $DEFAULT_TRAIN_FILE --output_dir "$output_dir" 
 
 # Record the end time
 end_time=$(date)
