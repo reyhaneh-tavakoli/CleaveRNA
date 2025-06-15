@@ -299,7 +299,7 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
             print("Warning: 'seq2' is missing in the merged data.")
     else:
         print("Warning: 'id2' is missing in the merged data.")
-        numeric_columns = merged_data.select_dtypes(include(['number']))
+        numeric_columns = merged_data.select_dtypes(include=['number'])
 
     if output_file is None:
         output_file = "generated_merged_num.csv"
@@ -443,12 +443,15 @@ def post_process_features(target_file, output_dir):
             numeric_with_id = pd.DataFrame()
             numeric_with_id['id2'] = merged_data['id2']
 
+            if 'seq2' in merged_data.columns:
+                numeric_with_id['seq2'] = merged_data['seq2']
+
             for col in numeric_columns.columns:
                 numeric_with_id[col] = numeric_columns[col]
 
             num_output_path = os.path.join(output_dir, "generated_merged_num.csv")
             numeric_with_id.to_csv(num_output_path, index=False)
-            print(f"✓ Saved id2 and numerical columns to {num_output_path}")
+            print(f"✓ Saved id2, seq2, and numerical columns to {num_output_path}")
             print("Numerical data sample:\n", numeric_with_id.head())
         else:
             print("✗ Warning: 'id2' column not found in merged data")

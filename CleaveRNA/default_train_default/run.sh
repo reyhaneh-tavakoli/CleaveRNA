@@ -1,7 +1,15 @@
 #!/bin/bash
-# Initialize conda for bash shell
-eval "$(conda shell.bash hook)"
 
+# Initialize conda for bash shell
+__conda_setup="$('/home/reytakop/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    export PATH="/home/reytakop/miniconda3/bin:$PATH"
+fi
+unset __conda_setup
+
+conda activate intarna-env
 # Define directories
 script_dir="../CleaveRNA.py"  # Correctly reference CleaveRNA.py
 
@@ -10,8 +18,7 @@ TARGETS="target_1.fasta target_2.fasta"  # Use space-separated file paths
 PARAMS="test_default.csv"
 DEFAULT_TRAIN_FILE="HPBC"
 
-# Activate environment with dependencies
-conda activate intarna_env
+
 
 # Record the start time
 start_time=$(date)

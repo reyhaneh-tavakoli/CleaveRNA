@@ -115,6 +115,16 @@ def perform_cross_validation(X, y, model_name, feature_set_name):
     for metric, values in scores.items():
         print(f"{metric.capitalize()}: {np.mean(values):.3f} ± {np.std(values):.3f}")
 
+    # Save cross-validation results to a CSV file
+    metrics_file = f"{model_name}_ML_metrics_{feature_set_name}.csv"
+    metrics_df = pd.DataFrame({
+        'Metric': ['Accuracy', 'Precision', 'Recall', 'F1'],
+        'Mean': [np.mean(scores['accuracy']), np.mean(scores['precision']), np.mean(scores['recall']), np.mean(scores['f1'])],
+        'Std': [np.std(scores['accuracy']), np.std(scores['precision']), np.std(scores['recall']), np.std(scores['f1'])]
+    })
+    metrics_df.to_csv(metrics_file, index=False)
+    report_file_status(metrics_file, f"ML metrics for {feature_set_name}")
+
 def train(args):
     # Ensure the output directory exists
     if args.output_dir:
@@ -335,6 +345,32 @@ def train(args):
             result_df.to_csv(output_path, index=False)
             print(f"✓ Prediction result saved to {output_path}")
 
+        # Save id2 and seq2 columns of all_generated_merged_num as CS_Dz.csv
+        df_all_generated = pd.read_csv("all_generated_merged_num.csv")
+        cs_dz_file = "CS_Dz.csv"
+        df_all_generated[['id2', 'seq2']].to_csv(cs_dz_file, index=False)
+        report_file_status(cs_dz_file, "CS_Dz file")
+
+        # Add id2 and seq2 columns of CS_Dz.csv to model-prefixed feature_set_1_predicted.csv
+        cs_dz_file_path = os.path.join(args.output_dir, cs_dz_file)
+        df_cs_dz = pd.read_csv(cs_dz_file_path)
+
+        feature_set_1_predicted_file = f"{args.default_train_file}_feature_set_1_predicted.csv"
+        feature_set_1_predicted_path = os.path.join(args.output_dir, feature_set_1_predicted_file)
+        df_feature_set_1 = pd.read_csv(feature_set_1_predicted_path)
+
+        df_feature_set_1 = pd.concat([df_cs_dz, df_feature_set_1], axis=1)
+        df_feature_set_1.to_csv(feature_set_1_predicted_path, index=False)
+        report_file_status(feature_set_1_predicted_path, "Updated feature set 1 predicted")
+
+        # Add id2 and seq2 columns of CS_Dz.csv to model-prefixed feature_set_2_predicted.csv
+        feature_set_2_predicted_file = f"{args.default_train_file}_feature_set_2_predicted.csv"
+        feature_set_2_predicted_path = os.path.join(args.output_dir, feature_set_2_predicted_file)
+        df_feature_set_2 = pd.read_csv(feature_set_2_predicted_path)
+
+        df_feature_set_2 = pd.concat([df_cs_dz, df_feature_set_2], axis=1)
+        df_feature_set_2.to_csv(feature_set_2_predicted_path, index=False)
+        report_file_status(feature_set_2_predicted_path, "Updated feature set 2 predicted")
     elif args.user_train_file:
         model_name = args.user_train_file
 
