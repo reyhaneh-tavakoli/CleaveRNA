@@ -371,6 +371,18 @@ def train(args):
         df_feature_set_2 = pd.concat([df_cs_dz, df_feature_set_2], axis=1)
         df_feature_set_2.to_csv(feature_set_2_predicted_path, index=False)
         report_file_status(feature_set_2_predicted_path, "Updated feature set 2 predicted")
+
+        # Sort feature_set_1_predicted.csv by y_pred (1 then 0) and reliability_score (high to low)
+        df_feature_set_1 = pd.read_csv(feature_set_1_predicted_path)
+        df_feature_set_1 = df_feature_set_1.sort_values(by=['y_pred', 'reliability_score'], ascending=[False, False])
+        df_feature_set_1.to_csv(feature_set_1_predicted_path, index=False)
+        report_file_status(feature_set_1_predicted_path, "Sorted feature set 1 predicted")
+
+        # Sort feature_set_2_predicted.csv by y_pred (1 then 0) and reliability_score (high to low)
+        df_feature_set_2 = pd.read_csv(feature_set_2_predicted_path)
+        df_feature_set_2 = df_feature_set_2.sort_values(by=['y_pred', 'reliability_score'], ascending=[False, False])
+        df_feature_set_2.to_csv(feature_set_2_predicted_path, index=False)
+        report_file_status(feature_set_2_predicted_path, "Sorted feature set 2 predicted")
     elif args.user_train_file:
         model_name = args.user_train_file
 
