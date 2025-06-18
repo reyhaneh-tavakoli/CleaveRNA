@@ -254,7 +254,7 @@ def train(args):
         report_file_status(feature_set_2_file, "Default ML train feature set 2 with Y")
 
         # Ensure proper standardization of columns in all_generated_merged_num.csv using HPBC_default_train_statistics.csv
-        mean_std_file = "HPBC_default_train_statistics.csv"
+        mean_std_file = f"{model_name}_default_train_statistics.csv"
         mean_std = pd.read_csv(mean_std_file, index_col=0)
         df_generated = pd.read_csv("all_generated_merged_num.csv")
         df_standardized_generated = df_generated.copy()
@@ -285,8 +285,8 @@ def train(args):
 
         # Predict for default train mode
         for feature_set, pickle_file, test_file, output_file in [
-            ("default_train_feature_set_1", "HPBC-default_train_feature_set_1-SVM.pkl", "generated_ML_test_feature_set_1.csv", "feature_set_1_predicted.csv"),
-            ("default_train_feature_set_2", "HPBC-default_train_feature_set_2-SVM.pkl", "generated_ML_test_feature_set_2.csv", "feature_set_2_predicted.csv")
+            ("default_train_feature_set_1", f"{model_name}-default_train_feature_set_1-SVM.pkl", "generated_ML_test_feature_set_1.csv", "feature_set_1_predicted.csv"),
+            ("default_train_feature_set_2", f"{model_name}-default_train_feature_set_2-SVM.pkl", "generated_ML_test_feature_set_2.csv", "feature_set_2_predicted.csv")
         ]:
             print(f"\nProcessing predictions for {feature_set}...")
 
