@@ -64,6 +64,19 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name):
     if 'Y' not in df.columns:
         raise ValueError("Training data must include a target column named 'Y'.")
 
+    # Check class balance and balance if needed
+    y_counts = df['Y'].value_counts()
+    if len(y_counts) == 2 and y_counts.iloc[0] != y_counts.iloc[1]:
+        print(f"Class imbalance detected: {y_counts.to_dict()}. Balancing by downsampling...")
+        min_count = y_counts.min()
+        df_balanced = df.groupby('Y', group_keys=False).apply(lambda x: x.sample(min_count, random_state=42)).reset_index(drop=True)
+        df = df_balanced
+        print(f"Balanced class counts: {df['Y'].value_counts().to_dict()}")
+    elif len(y_counts) == 2:
+        print(f"Classes are already balanced: {y_counts.to_dict()}")
+    else:
+        print(f"Warning: Only one class present in target column. SVM training may fail.")
+
     X_df = df.drop(columns=['Y'])
     y = df['Y']
 
