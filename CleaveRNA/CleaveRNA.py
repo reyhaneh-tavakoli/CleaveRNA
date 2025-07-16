@@ -112,12 +112,15 @@ def perform_cross_validation(X, y, model_name, feature_set_name):
     svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
 
     scores = {'accuracy': [], 'precision': [], 'recall': [], 'f1': []}
+    proba_results = []  # Store predict_proba results for each fold
 
-    for train_idx, test_idx in skf.split(X, y):
+    for fold, (train_idx, test_idx) in enumerate(skf.split(X, y)):
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
         svm.fit(X_train, y_train)
         preds = svm.predict(X_test)
+        proba = svm.predict_proba(X_test)
+        proba_results.append(proba)
 
         scores['accuracy'].append(accuracy_score(y_test, preds))
         scores['precision'].append(precision_score(y_test, preds))
@@ -127,6 +130,11 @@ def perform_cross_validation(X, y, model_name, feature_set_name):
     print("\nCross-validation results:")
     for metric, values in scores.items():
         print(f"{metric.capitalize()}: {np.mean(values):.3f} ± {np.std(values):.3f}")
+
+    # Optionally print or process the probability results
+    print("\nSample predict_proba output from first fold:")
+    if proba_results:
+        print(proba_results[0])
 
     # Save cross-validation results to a CSV file
     metrics_file = f"{model_name}_ML_metrics_{feature_set_name}.csv"
@@ -347,13 +355,11 @@ def train(args):
                 reliability_score = y_proba[:, 1] if y_proba.shape[1] >= 2 else y_proba[:, 0]
             except:
                 reliability_score = [None] * len(y_pred)
-
-            # Save only y_pred and reliability_score to the output file
+            # Save y_pred and reliability_score to the output file (barrier_score removed)
             result_df = pd.DataFrame({
                 'y_pred': y_pred,
                 'reliability_score': reliability_score
             })
-
             output_path = os.path.join(args.output_dir, f"{args.default_train_file}_{output_file}")
             result_df.to_csv(output_path, index=False)
             print(f"✓ Prediction result saved to {output_path}")
