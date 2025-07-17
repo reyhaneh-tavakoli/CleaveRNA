@@ -9,6 +9,7 @@ import pandas as pd
 import argparse
 from datetime import datetime
 import glob
+import numpy as np
 
 def convert_t_to_u(sequence):
     return sequence.replace('T', 'U')
@@ -311,7 +312,6 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
 def post_process_features(target_file, output_dir):
     """Perform additional feature processing after Feature.py completes"""
     print("\nStarting post-processing...")
-
     try:
         # Get the base name of the target file
         base_filename = os.path.splitext(os.path.basename(target_file))[0]
@@ -462,13 +462,13 @@ def post_process_features(target_file, output_dir):
         else:
             print(f"✗ File generated_merged_num.csv not found in {output_dir}")
             raise FileNotFoundError("generated_merged_num.csv was not created.")
-
     except Exception as e:
         print(f"✗ Post-processing failed: {e}")
 
 def merge_all_generated_files(output_dir, final_output_file):
     """
     Merge all generated_merged_num.csv files from the output directories into one file.
+    Add a column with the fasta file name for each id2.
     """
     print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
@@ -479,11 +479,14 @@ def merge_all_generated_files(output_dir, final_output_file):
     ]
 
     generated_files = []
+    fasta_names = []
     for directory in relevant_directories:
+        fasta_name = directory.replace("rnaplfold_output_", "")
         for root, _, files in os.walk(directory):
             for file in files:
                 if file == "generated_merged_num.csv":
                     generated_files.append(os.path.join(root, file))
+                    fasta_names.append(fasta_name)
 
     if not generated_files:
         print("✗ No relevant generated_merged_num.csv files found to merge.")
@@ -491,11 +494,13 @@ def merge_all_generated_files(output_dir, final_output_file):
 
     print(f"Found {len(generated_files)} relevant files to merge: {generated_files}")
 
-    # Merge all files into one DataFrame
+    # Merge all files into one DataFrame, adding target_file column
     merged_data = pd.DataFrame()
-    for file in generated_files:
+    for file, fasta_name in zip(generated_files, fasta_names):
         try:
             data = pd.read_csv(file)
+            # Only the base name, not the path
+            data['target_file'] = os.path.basename(fasta_name)
             print(f"Processing file: {file} with {len(data)} rows.")
             merged_data = pd.concat([merged_data, data], ignore_index=True)
         except Exception as e:
@@ -507,7 +512,7 @@ def merge_all_generated_files(output_dir, final_output_file):
 
     # Save the merged data to the final output file
     merged_data.to_csv(final_output_file, index=False)
-    print(f"✓ Merged data saved to {final_output_file}")
+    print(f"✓ Merged data saved to {final_output_file} (with target_file column)")
 
 def main(args=None):
     if args is None:
@@ -800,4 +805,5 @@ def main(args=None):
     merge_all_generated_files(output_dir=".", final_output_file="all_generated_merged_num.csv")
 
 if __name__ == "__main__":
+    # Always use the main() parser for CLI entry
     main()

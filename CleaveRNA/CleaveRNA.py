@@ -10,7 +10,8 @@ from sklearn.svm import SVC
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, brier_score_loss
+from scipy.stats import entropy
 import pickle
 
 def create_cfg_file(params_file):
@@ -246,33 +247,14 @@ def train(args):
         df_merged_test.to_csv(merged_test_file, index=False)
         report_file_status(merged_test_file, "Default ML test")
 
-        # Extract feature sets from default_ML_train
-        feature_set_1 = ['E_1', 'Pu1_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'seedNumber_3', 'E_diff_12', 'pumin1_4u', 'pumin1_4d', 'pumin5_8d']
-        feature_set_2 = ['E_1', 'Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedEbest_1', 'seedNumber_3', 'pumin1_4u', 'pumin1_4d', 'pumin5_8d']
+        # Define the single feature set
+        feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
 
         df_train = pd.read_csv(merged_train_file)
-        feature_set_1_file = f"{model_name}_default_ML_train_feature_set_1.csv"
-        df_train[feature_set_1].to_csv(feature_set_1_file, index=False)
-        report_file_status(feature_set_1_file, "Default ML train feature set 1")
-
-        feature_set_2_file = f"{model_name}_default_ML_train_feature_set_2.csv"
-        df_train[feature_set_2].to_csv(feature_set_2_file, index=False)
-        report_file_status(feature_set_2_file, "Default ML train feature set 2")
-
-        # Ensure the Y column is included in the feature set files
-        df_train = pd.read_csv(merged_train_file)
-
-        # Add Y column to feature set 1
-        feature_set_1_with_y = feature_set_1 + ['Y']
-        feature_set_1_file = f"{model_name}_default_ML_train_feature_set_1.csv"
-        df_train[feature_set_1_with_y].to_csv(feature_set_1_file, index=False)
-        report_file_status(feature_set_1_file, "Default ML train feature set 1 with Y")
-
-        # Add Y column to feature set 2
-        feature_set_2_with_y = feature_set_2 + ['Y']
-        feature_set_2_file = f"{model_name}_default_ML_train_feature_set_2.csv"
-        df_train[feature_set_2_with_y].to_csv(feature_set_2_file, index=False)
-        report_file_status(feature_set_2_file, "Default ML train feature set 2 with Y")
+        feature_set_with_y = feature_set + ['Y']
+        feature_set_file = f"{model_name}_default_ML_train_feature_set.csv"
+        df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
+        report_file_status(feature_set_file, "Default ML train feature set")
 
         # Ensure proper standardization of columns in all_generated_merged_num.csv using HPBC_default_train_statistics.csv
         mean_std_file = f"{model_name}_default_train_statistics.csv"
@@ -291,117 +273,104 @@ def train(args):
         df_standardized_generated.to_csv(standardized_generated_file, index=False)
         report_file_status(standardized_generated_file, "Standardized generated merged num")
 
-        # Extract feature sets from standardized_generated_merged_num
-        generated_feature_set_1_file = "generated_ML_test_feature_set_1.csv"
-        df_standardized_generated[feature_set_1].to_csv(generated_feature_set_1_file, index=False)
-        report_file_status(generated_feature_set_1_file, "Generated ML test feature set 1")
+        # Extract feature set from standardized_generated_merged_num
+        generated_feature_set_file = "generated_ML_test_feature_set.csv"
+        df_standardized_generated[feature_set].to_csv(generated_feature_set_file, index=False)
+        report_file_status(generated_feature_set_file, "Generated ML test feature set")
 
-        generated_feature_set_2_file = "generated_ML_test_feature_set_2.csv"
-        df_standardized_generated[feature_set_2].to_csv(generated_feature_set_2_file, index=False)
-        report_file_status(generated_feature_set_2_file, "Generated ML test feature set 2")
-
-        # Train and save SVM models for feature set 1 and feature set 2
-        train_and_save_svm(f"{model_name}_default_ML_train_feature_set_1.csv", model_name, "default_train_feature_set_1")
-        train_and_save_svm(f"{model_name}_default_ML_train_feature_set_2.csv", model_name, "default_train_feature_set_2")
+        # Train and save SVM model for the single feature set
+        train_and_save_svm(f"{model_name}_default_ML_train_feature_set.csv", model_name, "default_train_feature_set")
 
         # Predict for default train mode
-        for feature_set, pickle_file, test_file, output_file in [
-            ("default_train_feature_set_1", f"{model_name}-default_train_feature_set_1-SVM.pkl", "generated_ML_test_feature_set_1.csv", "feature_set_1_predicted.csv"),
-            ("default_train_feature_set_2", f"{model_name}-default_train_feature_set_2-SVM.pkl", "generated_ML_test_feature_set_2.csv", "feature_set_2_predicted.csv")
-        ]:
-            print(f"\nProcessing predictions for {feature_set}...")
-
-            # Load the pickle file
-            model_file = os.path.join(args.output_dir, pickle_file)
-            if not os.path.exists(model_file):
-                print(f"⚠ {model_file} not found. Skipping.")
-                continue
-
+        print("\nProcessing predictions for default_train_feature_set...")
+        pickle_file = f"{model_name}-default_train_feature_set-SVM.pkl"
+        test_file = "generated_ML_test_feature_set.csv"
+        output_file = "feature_set_predicted.csv"
+        model_file = os.path.join(args.output_dir, pickle_file)
+        if not os.path.exists(model_file):
+            print(f"\u26a0 {model_file} not found. Skipping.")
+        else:
             with open(model_file, 'rb') as f:
                 model_bundle = pickle.load(f)
-
             model = model_bundle['model']
             imputer = model_bundle['imputer']
             feature_columns = model_bundle['feature_columns']
-
-            # Load the test feature set
             test_file_path = os.path.join(args.output_dir, test_file)
             if not os.path.exists(test_file_path):
-                print(f"⚠ {test_file_path} not found. Skipping.")
-                continue
-
-            df_test = pd.read_csv(test_file_path)
-            available_columns = [col for col in feature_columns if col in df_test.columns]
-            if not available_columns:
-                print(f"⚠ No matching feature columns found in {test_file_path}. Skipping.")
-                continue
-
-            # Create a DataFrame with all expected columns initialized to 0
-            X_full = pd.DataFrame(0, index=range(len(df_test)), columns=feature_columns)
-            for col in available_columns:
-                X_full[col] = df_test[col]
-
-            # Handle missing values
-            X_imputed = imputer.transform(X_full)
-            
-            # Standardize features using sklearn's StandardScaler instead of manual standardization
-            scaler = StandardScaler()
-            X_std = scaler.fit_transform(X_imputed)
-
-            # Predict using the model
-            y_pred = model.predict(X_std)
-            try:
-                y_proba = model.predict_proba(X_std)
-                reliability_score = y_proba[:, 1] if y_proba.shape[1] >= 2 else y_proba[:, 0]
-            except:
-                reliability_score = [None] * len(y_pred)
-            # Save y_pred and reliability_score to the output file (barrier_score removed)
-            result_df = pd.DataFrame({
-                'y_pred': y_pred,
-                'reliability_score': reliability_score
-            })
-            output_path = os.path.join(args.output_dir, f"{args.default_train_file}_{output_file}")
-            result_df.to_csv(output_path, index=False)
-            print(f"✓ Prediction result saved to {output_path}")
+                print(f"\u26a0 {test_file_path} not found. Skipping.")
+            else:
+                df_test = pd.read_csv(test_file_path)
+                available_columns = [col for col in feature_columns if col in df_test.columns]
+                if not available_columns:
+                    print(f"\u26a0 No matching feature columns found in {test_file_path}. Skipping.")
+                else:
+                    X_full = pd.DataFrame(0, index=range(len(df_test)), columns=feature_columns)
+                    for col in available_columns:
+                        X_full[col] = df_test[col]
+                    X_imputed = imputer.transform(X_full)
+                    scaler = StandardScaler()
+                    X_std = scaler.fit_transform(X_imputed)
+                    y_true = None
+                    if 'Y' in df_test.columns:
+                        y_true = df_test['Y'].reset_index(drop=True)
+                        if len(y_true) != len(X_full):
+                            y_true = y_true.iloc[:len(X_full)].reset_index(drop=True)
+                    y_pred, reliability_score, decision_score, entropies, _ = predict_with_confidence(model, X_std, y_true)
+                    # Calculate predict_proba for predicted data
+                    predict_proba = model.predict_proba(X_std)[:, 1] if model.predict_proba(X_std).shape[1] >= 2 else model.predict_proba(X_std)[:, 0]
+                    margin = np.abs(decision_score)
+                    combined_score = reliability_score * margin
+                    result_df = pd.DataFrame({
+                        'id2': df_test['id2'] if 'id2' in df_test.columns else range(len(df_test)),
+                        'y_pred': y_pred,
+                        'reliability_score': reliability_score,
+                        'predict_proba': predict_proba,
+                        'decision_score': decision_score,
+                        'margin': margin,
+                        'entropy': entropies,
+                        'combined_score': combined_score
+                    })
+                    # Add target_file column after id2 using all_generated_merged_num.csv
+                    all_gen = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
+                    id2_to_target = dict(zip(all_gen['id2'], all_gen['target_file'])) if 'target_file' in all_gen.columns else {}
+                    # Insert target_file column after id2
+                    result_df.insert(1, 'target_file', result_df['id2'].map(id2_to_target) if id2_to_target else None)
+                    output_path = os.path.join(args.output_dir, f"{args.default_train_file}_{output_file}")
+                    result_df.to_csv(output_path, index=False)
+                    print(f"\u2713 Prediction result saved to {output_path}")
 
         # Save id2 and seq2 columns of all_generated_merged_num as CS_Dz.csv
         df_all_generated = pd.read_csv("all_generated_merged_num.csv")
         cs_dz_file = "CS_Dz.csv"
-        df_all_generated[['id2', 'seq2']].to_csv(cs_dz_file, index=False)
+        # Add target_file column as well
+        df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
         report_file_status(cs_dz_file, "CS_Dz file")
 
-        # Add id2 and seq2 columns of CS_Dz.csv to model-prefixed feature_set_1_predicted.csv
+        # Add id2, seq2, and target_file columns of CS_Dz.csv to model-prefixed feature_set_predicted.csv
         cs_dz_file_path = os.path.join(args.output_dir, cs_dz_file)
         df_cs_dz = pd.read_csv(cs_dz_file_path)
+        feature_set_predicted_file = f"{args.default_train_file}_feature_set_predicted.csv"
+        feature_set_predicted_path = os.path.join(args.output_dir, feature_set_predicted_file)
+        df_feature_set = pd.read_csv(feature_set_predicted_path)
+        # Insert target_file after seq2 if present, else after id2
+        if 'seq2' in df_cs_dz.columns:
+            cols = ['id2', 'seq2', 'target_file'] + [col for col in df_feature_set.columns if col not in ['id2', 'seq2', 'target_file']]
+            df_feature_set = pd.concat([df_cs_dz, df_feature_set], axis=1)
+            df_feature_set = df_feature_set.loc[:,~df_feature_set.columns.duplicated()]
+            df_feature_set = df_feature_set[cols]
+        else:
+            cols = ['id2', 'target_file'] + [col for col in df_feature_set.columns if col not in ['id2', 'target_file']]
+            df_feature_set = pd.concat([df_cs_dz, df_feature_set], axis=1)
+            df_feature_set = df_feature_set.loc[:,~df_feature_set.columns.duplicated()]
+            df_feature_set = df_feature_set[cols]
+        df_feature_set.to_csv(feature_set_predicted_path, index=False)
+        report_file_status(feature_set_predicted_path, "Updated feature set predicted")
 
-        feature_set_1_predicted_file = f"{args.default_train_file}_feature_set_1_predicted.csv"
-        feature_set_1_predicted_path = os.path.join(args.output_dir, feature_set_1_predicted_file)
-        df_feature_set_1 = pd.read_csv(feature_set_1_predicted_path)
-
-        df_feature_set_1 = pd.concat([df_cs_dz, df_feature_set_1], axis=1)
-        df_feature_set_1.to_csv(feature_set_1_predicted_path, index=False)
-        report_file_status(feature_set_1_predicted_path, "Updated feature set 1 predicted")
-
-        # Add id2 and seq2 columns of CS_Dz.csv to model-prefixed feature_set_2_predicted.csv
-        feature_set_2_predicted_file = f"{args.default_train_file}_feature_set_2_predicted.csv"
-        feature_set_2_predicted_path = os.path.join(args.output_dir, feature_set_2_predicted_file)
-        df_feature_set_2 = pd.read_csv(feature_set_2_predicted_path)
-
-        df_feature_set_2 = pd.concat([df_cs_dz, df_feature_set_2], axis=1)
-        df_feature_set_2.to_csv(feature_set_2_predicted_path, index=False)
-        report_file_status(feature_set_2_predicted_path, "Updated feature set 2 predicted")
-
-        # Sort feature_set_1_predicted.csv by y_pred (1 then 0) and reliability_score (high to low)
-        df_feature_set_1 = pd.read_csv(feature_set_1_predicted_path)
-        df_feature_set_1 = df_feature_set_1.sort_values(by=['y_pred', 'reliability_score'], ascending=[False, False])
-        df_feature_set_1.to_csv(feature_set_1_predicted_path, index=False)
-        report_file_status(feature_set_1_predicted_path, "Sorted feature set 1 predicted")
-
-        # Sort feature_set_2_predicted.csv by y_pred (1 then 0) and reliability_score (high to low)
-        df_feature_set_2 = pd.read_csv(feature_set_2_predicted_path)
-        df_feature_set_2 = df_feature_set_2.sort_values(by=['y_pred', 'reliability_score'], ascending=[False, False])
-        df_feature_set_2.to_csv(feature_set_2_predicted_path, index=False)
-        report_file_status(feature_set_2_predicted_path, "Sorted feature set 2 predicted")
+        # Sort feature_set_predicted.csv by y_pred (1 then 0) and reliability_score (high to low)
+        df_feature_set = pd.read_csv(feature_set_predicted_path)
+        df_feature_set = df_feature_set.sort_values(by=['y_pred', 'reliability_score'], ascending=[False, False])
+        df_feature_set.to_csv(feature_set_predicted_path, index=False)
+        report_file_status(feature_set_predicted_path, "Sorted feature set predicted")
     elif args.user_train_file:
         model_name = args.user_train_file
 
@@ -457,24 +426,18 @@ def train(args):
         df_merged_test.to_csv(merged_test_file, index=False)
         report_file_status(merged_test_file, "User ML test")
 
-        # Extract feature sets from user_ML_train
-        feature_set_1 = ['E_1', 'Pu1_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'seedNumber_3', 'E_diff_12', 'pumin1_4u', 'pumin1_4d', 'pumin5_8d']
-        feature_set_2 = ['E_1', 'Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedEbest_1', 'seedNumber_3', 'pumin1_4u', 'pumin1_4d', 'pumin5_8d']
+        # Define the single feature set
+        feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
 
         # Ensure df_train is initialized before use
         df_train = pd.read_csv(merged_train_file)
 
         # Extract feature sets from user_ML_train and include 'Y' column
-        feature_set_1_with_y = feature_set_1 + ['Y']
-        feature_set_2_with_y = feature_set_2 + ['Y']
+        feature_set_with_y = feature_set + ['Y']
 
-        feature_set_1_file = f"{model_name}_user_ML_train_feature_set_1.csv"
-        df_train[feature_set_1_with_y].to_csv(feature_set_1_file, index=False)
-        report_file_status(feature_set_1_file, "User ML train feature set 1 with Y")
-
-        feature_set_2_file = f"{model_name}_user_ML_train_feature_set_2.csv"
-        df_train[feature_set_2_with_y].to_csv(feature_set_2_file, index=False)
-        report_file_status(feature_set_2_file, "User ML train feature set 2 with Y")
+        feature_set_file = f"{model_name}_user_ML_train_feature_set.csv"
+        df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
+        report_file_status(feature_set_file, "User ML train feature set")
 
         # Standardize user_ML_test.csv
         df_test = pd.read_csv(merged_test_file)
@@ -483,27 +446,44 @@ def train(args):
         df_test_standardized.to_csv(standardized_test_file, index=False)
         report_file_status(standardized_test_file, "Standardized user ML test")
 
-        # Extract feature set 1 from user_ML_test.csv
-        feature_set_1 = ['E_1', 'Pu1_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'seedNumber_3', 'E_diff_12', 'pumin1_4u', 'pumin1_4d', 'pumin5_8d']
-        feature_set_1_file = f"{model_name}_user_ML_test_feature_set_1.csv"
+        # Extract feature set from user_ML_test.csv
+        feature_set_file = f"{model_name}_user_ML_test_feature_set.csv"
         df_test = pd.read_csv(merged_test_file)
-        df_test[feature_set_1].to_csv(feature_set_1_file, index=False)
-        report_file_status(feature_set_1_file, "User ML test feature set 1")
+        df_test[feature_set].to_csv(feature_set_file, index=False)
+        report_file_status(feature_set_file, "User ML test feature set")
 
-        # Extract feature set 2 from standardized_user_ML_test.csv
-        feature_set_2 = ['E_1', 'Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedEbest_1', 'seedNumber_3', 'pumin1_4u', 'pumin1_4d', 'pumin5_8d']
-        feature_set_2_file = f"{model_name}_user_ML_test_feature_set_2.csv"
-        df_test_standardized = pd.read_csv(standardized_test_file)
-        df_test_standardized[feature_set_2].to_csv(feature_set_2_file, index=False)
-        report_file_status(feature_set_2_file, "User ML test feature set 2")
+        # Train and save SVM model for feature set
+        train_and_save_svm(f"{model_name}_user_ML_train_feature_set.csv", model_name, "user_train_feature_set")
 
-        # Train and save SVM models for feature set 1 and feature set 2
-        train_and_save_svm(f"{model_name}_user_ML_train_feature_set_1.csv", model_name, "user_train_feature_set_1")
-        train_and_save_svm(f"{model_name}_user_ML_train_feature_set_2.csv", model_name, "user_train_feature_set_2")
-
+        # Add target_file column to prediction output if generated
+        user_pred_file = os.path.join(args.output_dir, f"{model_name}_feature_set_predicted.csv")
+        if os.path.exists(user_pred_file):
+            pred_df = pd.read_csv(user_pred_file)
+            all_gen = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
+            id2_to_target = dict(zip(all_gen['id2'], all_gen['target_file'])) if 'target_file' in all_gen.columns else {}
+            if 'id2' in pred_df.columns:
+                pred_df.insert(1, 'target_file', pred_df['id2'].map(id2_to_target) if id2_to_target else None)
+                pred_df.to_csv(user_pred_file, index=False)
+                print(f"Added target_file column to {user_pred_file}")
     else:
         print("Error: Either --default_train_file or --user_train_file must be provided.")
         sys.exit(1)
+
+def predict_with_confidence(model, X, y_true=None):
+    """
+    Returns predictions, reliability score (predict_proba),
+    decision_function (distance to boundary),
+    entropy of probabilities, and Brier score (if y_true provided).
+    """
+    y_pred = model.predict(X)
+    y_proba = model.predict_proba(X)
+    reliability_score = y_proba[:, 1] if y_proba.shape[1] >= 2 else y_proba[:, 0]
+    decision_score = model.decision_function(X)
+    entropies = entropy(y_proba.T, base=2)  # entropy per sample
+    brier = None
+    if y_true is not None:
+        brier = brier_score_loss(y_true, reliability_score)
+    return y_pred, reliability_score, decision_score, entropies, brier
 
 def main():
     try:
