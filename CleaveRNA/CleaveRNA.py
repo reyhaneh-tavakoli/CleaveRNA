@@ -5,6 +5,7 @@ import traceback
 from Feature import main as feature_main
 import pandas as pd
 import numpy as np
+from matplotlib import cm
 import subprocess
 from sklearn.svm import SVC
 from sklearn.impute import SimpleImputer
@@ -13,6 +14,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, brier_score_loss
 from scipy.stats import entropy
 import pickle
+import tempfile
+import shutil
 
 def create_cfg_file(params_file):
     """Generates the parameters.cfg file with settings based on the given params CSV file."""
@@ -485,6 +488,133 @@ def predict_with_confidence(model, X, y_true=None):
         brier = brier_score_loss(y_true, reliability_score)
     return y_pred, reliability_score, decision_score, entropies, brier
 
+def read_fasta_sequence(fasta_file):
+    """Read the first sequence from a fasta file as a single string."""
+    seq = ''
+    try:
+        with open(fasta_file, 'r') as f:
+            for line in f:
+                if not line.startswith('>'):
+                    seq += line.strip()
+    except Exception as e:
+        print(f"Error reading fasta file {fasta_file}: {e}")
+    return seq
+
+def run_rnafold_and_get_structure(sequence):
+    """
+    Run RNAfold on the given sequence and return (sequence, dot_bracket, mfe).
+    """
+    import subprocess
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as fasta_file:
+        fasta_file.write(">seq\n" + sequence + "\n")
+        fasta_file.flush()
+        try:
+            result = subprocess.run(["RNAfold", fasta_file.name], capture_output=True, text=True, check=True)
+            lines = result.stdout.strip().split('\n')
+            if len(lines) >= 3:
+                seq = lines[1].strip()
+                struct_line = lines[2].strip()
+                if ' ' in struct_line:
+                    dot_bracket, mfe = struct_line.split(' ', 1)
+                    mfe = mfe.strip('() ').replace('kcal/mol','')
+                else:
+                    dot_bracket, mfe = struct_line, ''
+                return seq, dot_bracket, mfe
+        except Exception as e:
+            print(f"Error running RNAfold: {e}")
+    return sequence, '', ''
+
+def dotbracket_to_pairs(dot_bracket):
+    """
+    Convert dot-bracket notation to list of base pairs (1-based).
+    """
+    stack = []
+    pairs = []
+    for i, c in enumerate(dot_bracket):
+        if c == '(': 
+            stack.append(i)
+        elif c == ')':
+            if stack:
+                j = stack.pop()
+                pairs.append((j+1, i+1))
+    return pairs
+
+def process_top10_rna_structures(predicted_file, targets, output_dir):
+    """
+    For the top 10 by reliability_score in predicted_file, run RNAfold and RNAplot for each unique target_file.
+    Save PNGs named after the target_file in output_dir.
+    """
+    import pandas as pd
+    import subprocess
+    import os
+
+    # Read predictions and get top 10 by reliability_score
+    df = pd.read_csv(predicted_file)
+    if 'reliability_score' not in df.columns or 'target_file' not in df.columns:
+        print(f"Error: Columns 'reliability_score' or 'target_file' not found in {predicted_file}.")
+        return
+    top10 = df.sort_values(by='reliability_score', ascending=False).head(10)
+    unique_targets = top10['target_file'].unique()
+
+    # Map target_file to fasta path
+    target_map = {os.path.splitext(os.path.basename(t))[0]: t for t in targets}
+
+    for target_name in unique_targets:
+        # Remove extension for matching
+        base_name = os.path.splitext(os.path.basename(str(target_name)))[0]
+        fasta_path = target_map.get(base_name)
+        if not fasta_path or not os.path.exists(fasta_path):
+            print(f"Warning: FASTA file for target '{target_name}' not found.")
+            continue
+        # Read sequence
+        seq = read_fasta_sequence(fasta_path)
+        if not seq:
+            print(f"Warning: No sequence found in {fasta_path}.")
+            continue
+        # Run RNAfold
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.fa') as fasta_file:
+            fasta_file.write(f">{base_name}\n{seq}\n")
+            fasta_file.flush()
+            try:
+                result = subprocess.run(["RNAfold", fasta_file.name], capture_output=True, text=True, check=True)
+                lines = result.stdout.strip().split('\n')
+                if len(lines) >= 3:
+                    struct_line = lines[2].strip()
+                    if ' ' in struct_line:
+                        dot_bracket, mfe = struct_line.split(' ', 1)
+                        mfe = mfe.strip('() ').replace('kcal/mol','')
+                    else:
+                        dot_bracket, mfe = struct_line, ''
+                else:
+                    print(f"Warning: Unexpected RNAfold output for {base_name}.")
+                    continue
+            except Exception as e:
+                print(f"Error running RNAfold for {base_name}: {e}")
+                continue
+        # Write structure for RNAplot
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.str') as struct_file:
+            struct_file.write(f">{base_name}\n{seq}\n{dot_bracket}\n")
+            struct_file.flush()
+            ps_path = os.path.join(output_dir, f"{base_name}_ss.ps")
+            png_path = os.path.join(output_dir, f"{base_name}.png")
+            try:
+                # Run RNAplot (no -o or -t options)
+                subprocess.run(["RNAplot", struct_file.name], cwd=output_dir, check=True)
+                # RNAplot outputs <basename>_ss.ps in the working dir
+                if os.path.exists(ps_path):
+                    # Convert .ps to .png using ImageMagick's convert
+                    try:
+                        subprocess.run(["convert", ps_path, png_path], check=True)
+                        print(f"Saved RNA structure plot: {png_path}")
+                        os.remove(ps_path)
+                    except Exception as e:
+                        print(f"Error converting {ps_path} to PNG: {e}")
+                        print(f"PS file left at: {ps_path}")
+                else:
+                    print(f"RNAplot did not produce expected PS for {base_name}.")
+            except Exception as e:
+                print(f"Error running RNAplot for {base_name}: {e}")
+
 def main():
     try:
         parser = argparse.ArgumentParser()
@@ -526,6 +656,18 @@ def main():
         # Execute Feature processing, removing the placeholder print
         train(args)
 
+        # After all predictions and outputs are generated, process top 10 reliability_score
+        # Determine the predicted file name
+        if args.default_train_file:
+            predicted_file = os.path.join(args.output_dir, f"{args.default_train_file}_feature_set_predicted.csv")
+        elif args.user_train_file:
+            predicted_file = os.path.join(args.output_dir, f"{args.user_train_file}_feature_set_predicted.csv")
+        else:
+            predicted_file = os.path.join(args.output_dir, "feature_set_predicted.csv")
+        if os.path.exists(predicted_file):
+            process_top10_rna_structures(predicted_file, args.targets, args.output_dir)
+        else:
+            print(f"Predicted file {predicted_file} not found. Skipping RNA structure plotting.")
     except Exception as e:
         print("An error occurred:", str(e))
         traceback.print_exc()

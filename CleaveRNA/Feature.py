@@ -468,7 +468,7 @@ def post_process_features(target_file, output_dir):
 def merge_all_generated_files(output_dir, final_output_file):
     """
     Merge all generated_merged_num.csv files from the output directories into one file.
-    Add a column with the fasta file name for each id2.
+    Add a column with the target fasta file name for each id2 by searching which file each id2 belongs to.
     """
     print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
@@ -480,13 +480,22 @@ def merge_all_generated_files(output_dir, final_output_file):
 
     generated_files = []
     fasta_names = []
+    id2_to_file = dict()
     for directory in relevant_directories:
         fasta_name = directory.replace("rnaplfold_output_", "")
         for root, _, files in os.walk(directory):
             for file in files:
                 if file == "generated_merged_num.csv":
-                    generated_files.append(os.path.join(root, file))
+                    file_path = os.path.join(root, file)
+                    generated_files.append(file_path)
                     fasta_names.append(fasta_name)
+                    # Map id2 to fasta file for this file
+                    try:
+                        df = pd.read_csv(file_path, usecols=["id2"])
+                        for id2 in df["id2"].dropna().unique():
+                            id2_to_file[str(id2)] = os.path.basename(fasta_name)
+                    except Exception as e:
+                        print(f"Error reading id2 from {file_path}: {e}")
 
     if not generated_files:
         print("✗ No relevant generated_merged_num.csv files found to merge.")
@@ -494,14 +503,11 @@ def merge_all_generated_files(output_dir, final_output_file):
 
     print(f"Found {len(generated_files)} relevant files to merge: {generated_files}")
 
-    # Merge all files into one DataFrame, adding target_file column
+    # Merge all files into one DataFrame
     merged_data = pd.DataFrame()
-    for file, fasta_name in zip(generated_files, fasta_names):
+    for file in generated_files:
         try:
             data = pd.read_csv(file)
-            # Only the base name, not the path
-            data['target_file'] = os.path.basename(fasta_name)
-            print(f"Processing file: {file} with {len(data)} rows.")
             merged_data = pd.concat([merged_data, data], ignore_index=True)
         except Exception as e:
             print(f"Error reading file {file}: {e}")
@@ -509,6 +515,9 @@ def merge_all_generated_files(output_dir, final_output_file):
     if merged_data.empty:
         print("✗ No data to save after merging.")
         return
+
+    # Add target_file column by mapping id2
+    merged_data["target_file"] = merged_data["id2"].astype(str).map(id2_to_file)
 
     # Save the merged data to the final output file
     merged_data.to_csv(final_output_file, index=False)

@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Initialize conda for bash shell
 __conda_setup="$('/home/reytakop/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
