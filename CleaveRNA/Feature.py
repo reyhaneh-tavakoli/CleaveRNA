@@ -465,10 +465,11 @@ def post_process_features(target_file, output_dir):
     except Exception as e:
         print(f"✗ Post-processing failed: {e}")
 
-def merge_all_generated_files(output_dir, final_output_file):
+def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files=None):
     """
     Merge all generated_merged_num.csv files from the output directories into one file.
     Add a column with the target fasta file name for each id2 by searching which file each id2 belongs to.
+    If targets_fasta_files is provided, only include those files.
     """
     print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
@@ -478,50 +479,38 @@ def merge_all_generated_files(output_dir, final_output_file):
         if os.path.isdir(os.path.join(output_dir, d)) and d.startswith("rnaplfold_output_")
     ]
 
-    generated_files = []
-    fasta_names = []
-    id2_to_file = dict()
+    # If targets_fasta_files is provided, filter relevant_directories to only those
+    if targets_fasta_files is not None:
+        target_basenames = set([os.path.splitext(os.path.basename(f))[0] for f in targets_fasta_files])
+        relevant_directories = [d for d in relevant_directories if os.path.basename(d).replace("rnaplfold_output_", "") in target_basenames]
+
+    merged_data = pd.DataFrame()
     for directory in relevant_directories:
+        # Extract the actual FASTA file name from the directory name
         fasta_name = directory.replace("rnaplfold_output_", "")
+        fasta_file = fasta_name if fasta_name.endswith(".fasta") else f"{fasta_name}.fasta"
+        fasta_file = os.path.basename(fasta_file)  # Only the filename
         for root, _, files in os.walk(directory):
             for file in files:
                 if file == "generated_merged_num.csv":
                     file_path = os.path.join(root, file)
-                    generated_files.append(file_path)
-                    fasta_names.append(fasta_name)
-                    # Map id2 to fasta file for this file
-                    try:
-                        df = pd.read_csv(file_path, usecols=["id2"])
-                        for id2 in df["id2"].dropna().unique():
-                            id2_to_file[str(id2)] = os.path.basename(fasta_name)
-                    except Exception as e:
-                        print(f"Error reading id2 from {file_path}: {e}")
-
-    if not generated_files:
-        print("✗ No relevant generated_merged_num.csv files found to merge.")
-        return
-
-    print(f"Found {len(generated_files)} relevant files to merge: {generated_files}")
-
-    # Merge all files into one DataFrame
-    merged_data = pd.DataFrame()
-    for file in generated_files:
-        try:
-            data = pd.read_csv(file)
-            merged_data = pd.concat([merged_data, data], ignore_index=True)
-        except Exception as e:
-            print(f"Error reading file {file}: {e}")
+                    df = pd.read_csv(file_path)
+                    # Always set target_file column to the FASTA file name for every row
+                    df['target_file'] = fasta_file
+                    merged_data = pd.concat([merged_data, df], ignore_index=True)
 
     if merged_data.empty:
         print("✗ No data to save after merging.")
         return
 
-    # Add target_file column by mapping id2
-    merged_data["target_file"] = merged_data["id2"].astype(str).map(id2_to_file)
-
     # Save the merged data to the final output file
+    # Remove any duplicate 'id2.1', 'seq2.1', 'target_file.1' and similar columns before saving
+    cols_to_remove = [col for col in merged_data.columns if col in ['id2.1', 'seq2.1', 'target_file.1'] or 
+                      col.startswith('id2.') or col.startswith('seq2.') or col.startswith('target_file.')]
+    if cols_to_remove:
+        merged_data = merged_data.drop(columns=cols_to_remove)
     merged_data.to_csv(final_output_file, index=False)
-    print(f"✓ Merged data saved to {final_output_file} (with target_file column)")
+    print(f"✓ Merged data saved to {final_output_file} (with only one set of id2, seq2, target_file columns)")
 
 def main(args=None):
     if args is None:
@@ -529,6 +518,7 @@ def main(args=None):
         parser.add_argument('--targets', required=True, help="Path to a directory or a comma-separated list of FASTA files")
         parser.add_argument('--params', required=True, help="Path to the CSV file containing parameters")
         parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
+        parser.add_argument('--output_dir', required=False, default='.', help="Directory to save all outputs")
         args = parser.parse_args()
 
     params_df = pd.read_csv(args.params)
@@ -811,7 +801,7 @@ def main(args=None):
 
     print("\n✅ Feature generation completed successfully for all files!")
 
-    merge_all_generated_files(output_dir=".", final_output_file="all_generated_merged_num.csv")
+    merge_all_generated_files(output_dir=args.output_dir, final_output_file=os.path.join(args.output_dir, "all_generated_merged_num.csv"), targets_fasta_files=fasta_files)
 
 if __name__ == "__main__":
     # Always use the main() parser for CLI entry
