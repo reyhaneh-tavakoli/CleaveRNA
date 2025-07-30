@@ -290,8 +290,9 @@ def train(args):
         print("\nProcessing predictions for default_train_feature_set...")
         pickle_file = f"{model_name}-default_train_feature_set-SVM.pkl"
         test_file = "generated_ML_test_feature_set.csv"
-        output_file = "feature_set_predicted.csv"
+        output_file = f"{model_name}_feature_set_predicted.csv"
         model_file = os.path.join(args.output_dir, pickle_file)
+        output_path = os.path.join(args.output_dir, output_file)
         if not os.path.exists(model_file):
             print(f"\u26a0 {model_file} not found. Skipping.")
         else:
@@ -340,29 +341,30 @@ def train(args):
                     id2_to_target = dict(zip(all_gen['id2'], all_gen['target_file'])) if 'target_file' in all_gen.columns else {}
                     # Insert target_file column after id2
                     result_df.insert(1, 'target_file', result_df['id2'].map(id2_to_target) if id2_to_target else None)
-                    output_path = os.path.join(args.output_dir, f"{args.default_train_mode}_{output_file}")
                     result_df.to_csv(output_path, index=False)
                     print(f"\u2713 Prediction result saved to {output_path}")
 
-                    # After saving prediction result, replace id2 and target_file columns from CS_Dz.csv by row order
+                    # After saving prediction result, set id2, seq2, and target_file columns from CS_Dz.csv by row order
                     cs_dz_path = os.path.join(args.output_dir, "CS_Dz.csv")
                     if os.path.exists(cs_dz_path):
                         df_cs_dz = pd.read_csv(cs_dz_path)
-                        # Replace id2 and target_file columns by row order
+                        # Set id2, seq2, and target_file columns by row order
                         if len(result_df) == len(df_cs_dz):
                             result_df['id2'] = df_cs_dz['id2'].astype(str).values
+                            result_df['seq2'] = df_cs_dz['seq2'].values
                             result_df['target_file'] = df_cs_dz['target_file'].values
-                            # Ensure target_file is the second column
+                            # Ensure column order: id2, seq2, target_file, ...
                             cols = list(result_df.columns)
-                            if 'target_file' in cols:
-                                cols.insert(1, cols.pop(cols.index('target_file')))
+                            for col in ['id2', 'seq2', 'target_file']:
+                                if col in cols:
+                                    cols.insert(['id2', 'seq2', 'target_file'].index(col), cols.pop(cols.index(col)))
                             result_df = result_df[cols]
                             result_df.to_csv(output_path, index=False)
-                            print("✓ Prediction result columns replaced with CS_Dz mapping by row order.")
+                            print("✓ Prediction result columns set from CS_Dz mapping by row order (id2, seq2, target_file).")
                         else:
                             print("Warning: Row count mismatch between prediction and CS_Dz.csv. Columns not replaced.")
                     else:
-                        print(f"Warning: CS_Dz.csv not found at {cs_dz_path}, id2/target_file columns not replaced.")
+                        print(f"Warning: CS_Dz.csv not found at {cs_dz_path}, id2/seq2/target_file columns not replaced.")
         # Save id2 and seq2 columns of all_generated_merged_num as CS_Dz.csv
         df_all_generated = pd.read_csv("all_generated_merged_num.csv")
         cs_dz_file = "CS_Dz.csv"
@@ -532,6 +534,7 @@ def train(args):
         test_file = generated_feature_set_file
         output_file = f"{model_name}_feature_set_predicted.csv"
         model_file = os.path.join(args.output_dir, pickle_file)
+        output_path = os.path.join(args.output_dir, output_file)
         if not os.path.exists(model_file):
             print(f"Error: Model file {model_file} not found.")
         else:
@@ -584,6 +587,7 @@ def train(args):
             if len(df_feature_set) == len(df_cs_dz):
                 df_feature_set['id2'] = df_cs_dz['id2'].astype(str).values
                 df_feature_set['target_file'] = df_cs_dz['target_file'].values
+                df_feature_set['seq2'] = df_cs_dz['seq2'].values
                 # Ensure target_file is the second column
                 cols = list(df_feature_set.columns)
                 if 'target_file' in cols:
