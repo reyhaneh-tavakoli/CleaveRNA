@@ -10,6 +10,7 @@ import argparse
 from datetime import datetime
 import glob
 import numpy as np
+import contextlib
 
 def convert_t_to_u(sequence):
     return sequence.replace('T', 'U')
@@ -473,16 +474,16 @@ def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files
     """
     print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
-    # Dynamically determine relevant directories based on the current run
+    # Look for rnaplfold_output_* directories in the working directory
     relevant_directories = [
-        os.path.join(output_dir, d) for d in os.listdir(output_dir)
-        if os.path.isdir(os.path.join(output_dir, d)) and d.startswith("rnaplfold_output_")
+        d for d in os.listdir(".")
+        if os.path.isdir(d) and d.startswith("rnaplfold_output_")
     ]
 
     # If targets_fasta_files is provided, filter relevant_directories to only those
     if targets_fasta_files is not None:
         target_basenames = set([os.path.splitext(os.path.basename(f))[0] for f in targets_fasta_files])
-        relevant_directories = [d for d in relevant_directories if os.path.basename(d).replace("rnaplfold_output_", "") in target_basenames]
+        relevant_directories = [d for d in relevant_directories if d.replace("rnaplfold_output_", "") in target_basenames]
 
     merged_data = pd.DataFrame()
     for directory in relevant_directories:
@@ -511,6 +512,16 @@ def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files
         merged_data = merged_data.drop(columns=cols_to_remove)
     merged_data.to_csv(final_output_file, index=False)
     print(f"✓ Merged data saved to {final_output_file} (with only one set of id2, seq2, target_file columns)")
+
+@contextlib.contextmanager
+def change_working_dir(new_dir):
+    prev_dir = os.getcwd()
+    os.makedirs(new_dir, exist_ok=True)
+    os.chdir(new_dir)
+    try:
+        yield
+    finally:
+        os.chdir(prev_dir)
 
 def main(args=None):
     if args is None:
@@ -586,24 +597,28 @@ def main(args=None):
             with open(target_file, 'r') as f:
                 target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
 
-            # Check the nucleotide content at the specified region
-            sequence_at_position = target_seq[start - 1:end]  # Adjust for 0-based indexing
-            motif = CS[0]
+            # Always extract a dinucleotide: positions start and start+1 (1-based)
+            dinuc_start = start
+            dinuc_end = start + 1
+            motif = target_seq[dinuc_start - 1:dinuc_end]  # 1-based inclusive
+            if len(motif) != 2:
+                print(f"Warning: Dinucleotide extraction failed at {dinuc_start}-{dinuc_end} in {target_file}. Extracted: '{motif}'. Skipping.")
+                continue
+            if (end - start + 1) != 2:
+                print(f"Warning: Provided region {start}-{end} is not a dinucleotide. Using dinucleotide at {dinuc_start}-{dinuc_end} instead.")
 
-            if sequence_at_position.upper() != motif.upper():
-                print(f"Warning: CS motif '{motif}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
-                motif = sequence_at_position.upper()
-
-            # Proceed with the corrected CS motif
-            id2 = f"{start}-{end}"
-            if int(id2.split('-')[0]) != start:
-                raise ValueError(f"CS_index {start} does not match the first number of id2 {id2.split('-')[0]}.")
-
-            print(f"Validated CS motif and corrected id2 calculation: {id2}")
-            motif_matches = [(start - 1, end, motif, start, end)]
+            # Format id2 as {dinucleotide}-{start}-{end}, e.g., AC-17-18
+            id2 = f"{motif}-{dinuc_start}-{dinuc_end}"
+            motif_matches = [(dinuc_start, dinuc_end, motif, dinuc_start, dinuc_end)]
             queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
+            # Overwrite the id2 in queries with the new format
+            queries = [(id2, seq) for _, seq in queries]
             query_file = f"queries_{os.path.basename(target_file).split('.')[0]}.fasta"
             write_queries_to_fasta(queries, query_file)
+
+            output_dir = f"rnaplfold_output_{os.path.basename(target_file).split('.')[0]}"
+            with change_working_dir(output_dir):
+                post_process_features(target_file, output_dir)
 
     elif args.feature_mode == 'target_check':
         for _, row in params_df.iterrows():
@@ -742,7 +757,7 @@ def main(args=None):
 
                 print(f"Validated CS motif and corrected id2 calculation: {id2}")
 
-                motif_matches = [(start, end, motif, start + 1, end)]
+                motif_matches = [(start, end, motif, start, end)]
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
             elif args.feature_mode == 'target_check':
                 if 'Start_End_Index' not in row:
@@ -801,7 +816,8 @@ def main(args=None):
 
     print("\n✅ Feature generation completed successfully for all files!")
 
-    merge_all_generated_files(output_dir=args.output_dir, final_output_file=os.path.join(args.output_dir, "all_generated_merged_num.csv"), targets_fasta_files=fasta_files)
+    # Always write the merged file to the working directory
+    merge_all_generated_files(output_dir=args.output_dir, final_output_file="all_generated_merged_num.csv", targets_fasta_files=fasta_files)
 
 if __name__ == "__main__":
     # Always use the main() parser for CLI entry
