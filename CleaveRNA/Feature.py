@@ -109,9 +109,8 @@ def process_specific_query(csv_file, output_dir):
             print(f"Warning: CS motif '{CS}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
             CS = sequence_at_position.upper()
 
-        # Generate the query sequence
-        comp = lambda s: ''.join(["AUCG"["UAGC".index(n)] for n in s][::-1])
-        query_seq = f"{comp(LA_seq)}{CA}{comp(RA_seq)}"
+        # Generate the query sequence using LA_seq and RA_seq directly (no reverse complement)
+        query_seq = f"{LA_seq}{CA}{RA_seq}"
 
         # Write the query to a FASTA file
         query_file = os.path.join(output_dir, f"queries_{os.path.basename(target_file).split('.')[0]}_{start}_{end}.fasta")
@@ -691,9 +690,9 @@ def main(args=None):
                 print(f"Warning: CS motif '{CS}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
                 CS = sequence_at_position.upper()
 
-            # Use the same logic as default mode: find_CS, prepare_sequences, write_queries_to_fasta
-            motif_matches = [(start, end, CS, start, end)]
-            queries = prepare_sequences(target_seq, motif_matches, len(LA_seq), len(RA_seq), core)
+            # Generate query using LA_seq and RA_seq directly (no reverse complement)
+            query_seq = f"{LA_seq}{core}{RA_seq}"
+            queries = [(f"{CS}-{start}-{end}", query_seq)]
             query_file = f"queries_{os.path.basename(target_file).split('.')[0]}_{start}_{end}.fasta"
             write_queries_to_fasta(queries, query_file)
             print(f"Generated query file: {query_file}")
@@ -715,7 +714,8 @@ def main(args=None):
                 })
 
         if processed_files:
-            merge_all_generated_files(args.output_dir, "all_generated_merged_num.csv", list(processed_files))
+            final_output_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
+            merge_all_generated_files(args.output_dir, final_output_path, list(processed_files))
             # Patch the_feature_set_predicted.csv to use the correct id2, seq2, target_file columns from CS_Dz in order
             predicted_path = os.path.join(args.output_dir, "the_feature_set_predicted.csv")
             if os.path.exists(predicted_path):
@@ -859,8 +859,9 @@ def main(args=None):
 
     print("\n✅ Feature generation completed successfully for all files!")
 
-    # Always write the merged file to the working directory
-    merge_all_generated_files(output_dir=args.output_dir, final_output_file="all_generated_merged_num.csv", targets_fasta_files=fasta_files)
+    # Always write the merged file to the output directory
+    final_output_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
+    merge_all_generated_files(output_dir=args.output_dir, final_output_file=final_output_path, targets_fasta_files=fasta_files)
 
 if __name__ == "__main__":
     # Always use the main() parser for CLI entry
