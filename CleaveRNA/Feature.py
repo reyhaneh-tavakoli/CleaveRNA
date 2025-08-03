@@ -122,8 +122,17 @@ def process_specific_query(csv_file, output_dir):
 
         # Run RNAplfold and process IntaRNA queries
         output_prefix = os.path.basename(target_file).split('.')[0]
-        lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), f"rnaplfold_output_{output_prefix}", temperature)
-        process_intarna_queries(target_file, query_file, lunp_file, csv_file, len(LA_seq), len(RA_seq), output_prefix, CS)
+        output_dir = f"rnaplfold_output_{output_prefix}"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), output_dir, temperature)
+        
+        # Use parameters.cfg for IntaRNA, not the csv file
+        param_file = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
+        process_intarna_queries(target_file, query_file, lunp_file, param_file, len(LA_seq), len(RA_seq), output_prefix, CS)
+        
+        # Post-process the features
+        post_process_features(target_file, output_dir)
 
 def construct_intarna_command(query_file, target_file, param_file, additional):
     return (
@@ -531,6 +540,10 @@ def main(args=None):
         parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
         parser.add_argument('--output_dir', required=False, default='.', help="Directory to save all outputs")
         args = parser.parse_args()
+        
+        # Make params file also serve as specific_csv for specific_query mode
+        if args.feature_mode == 'specific_query':
+            args.specific_csv = args.params
 
     params_df = pd.read_csv(args.params)
 
@@ -661,29 +674,61 @@ def main(args=None):
         if not {'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', 'CA'}.issubset(params_df.columns):
             raise ValueError("The CSV file must contain the columns: LA_seq, RA_seq, CS, CS_Index_query, Tem, and CA.")
 
+        processed_files = set()
+        cs_dz_records = []  # To store id2, seq2, target_file for each query in order
         for _, row in params_df.iterrows():
             LA_seq, RA_seq, CS, temperature, core = row['LA_seq'], row['RA_seq'], row['CS'], float(row['Tem']), row['CA']
             target_file, position = row['CS_Index_query'].split(':')
+            processed_files.add(target_file)
             start, end = map(int, position.split('-'))
 
             with open(target_file, 'r') as f:
                 target_seq = convert_t_to_u(''.join([line.strip() for line in f if not line.startswith(">")]))
 
+            # Validate the CS motif
             sequence_at_position = target_seq[start - 1:end]  # Adjust for 0-based indexing
-
             if sequence_at_position.upper() != CS.upper():
                 print(f"Warning: CS motif '{CS}' does not match the sequence at position {start}-{end} in {target_file}. Found: '{sequence_at_position}'. Using the sequence from the target file.")
                 CS = sequence_at_position.upper()
 
-            query_seq = f"{LA_seq}{core}{RA_seq}"
+            # Use the same logic as default mode: find_CS, prepare_sequences, write_queries_to_fasta
+            motif_matches = [(start, end, CS, start, end)]
+            queries = prepare_sequences(target_seq, motif_matches, len(LA_seq), len(RA_seq), core)
             query_file = f"queries_{os.path.basename(target_file).split('.')[0]}_{start}_{end}.fasta"
-            write_queries_to_fasta([(f"{CS}-{start}", query_seq)], query_file)
-
+            write_queries_to_fasta(queries, query_file)
             print(f"Generated query file: {query_file}")
 
             output_prefix = os.path.basename(target_file).split('.')[0]
-            lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), f"rnaplfold_output_{output_prefix}", temperature)
-            process_intarna_queries(target_file, query_file, lunp_file, args.params, len(LA_seq), len(RA_seq), output_prefix, CS)
+            output_dir = f"rnaplfold_output_{output_prefix}"
+            os.makedirs(output_dir, exist_ok=True)
+            lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), output_dir, temperature)
+            param_file = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
+            process_intarna_queries(target_file, query_file, lunp_file, param_file, len(LA_seq), len(RA_seq), output_prefix, CS)
+            post_process_features(target_file, output_dir)
+
+            # Store mapping for CS_Dz (id2, seq2, target_file) in order
+            for qname, qseq in queries:
+                cs_dz_records.append({
+                    'id2': qname,
+                    'seq2': qseq,
+                    'target_file': os.path.basename(target_file)
+                })
+
+        if processed_files:
+            merge_all_generated_files(args.output_dir, "all_generated_merged_num.csv", list(processed_files))
+            # Patch the_feature_set_predicted.csv to use the correct id2, seq2, target_file columns from CS_Dz in order
+            predicted_path = os.path.join(args.output_dir, "the_feature_set_predicted.csv")
+            if os.path.exists(predicted_path):
+                predicted_df = pd.read_csv(predicted_path)
+                cs_dz_df = pd.DataFrame(cs_dz_records)
+                # Overwrite the columns in the predicted output with the CS_Dz values in order
+                for col in ['id2', 'seq2', 'target_file']:
+                    if col in predicted_df.columns and col in cs_dz_df.columns:
+                        predicted_df[col] = cs_dz_df[col].values
+                predicted_df.to_csv(predicted_path, index=False)
+                print(f"\n✓ Patched {predicted_path} with id2, seq2, target_file columns from CS_Dz in order.")
+            print("\n✅ Feature generation completed successfully for specific_query mode!")
+            return  # Skip the second processing phase
 
     else:
         raise ValueError("Invalid feature mode specified.")
@@ -794,9 +839,7 @@ def main(args=None):
                 print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
 
             elif args.feature_mode == 'specific_query':
-                if not args.specific_csv:
-                    raise ValueError("You must provide a CSV file with --specific_csv for specific_query mode.")
-                process_specific_query(args.specific_csv, output_dir)
+                # Skip the second processing phase since it's already handled
                 continue
 
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')

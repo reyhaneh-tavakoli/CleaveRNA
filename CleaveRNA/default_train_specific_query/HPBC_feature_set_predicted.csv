@@ -1,0 +1,2 @@
+id2,seq2,target_file,y_pred,reliability_score,decision_score,entropy
+UA-17-18,AUAGACCAUGGCUAGCUACAACGAUUAAAAUAAG,target_1.fasta,1,0.5694852808800193,0.7261917473657201,0.9860235553252218
