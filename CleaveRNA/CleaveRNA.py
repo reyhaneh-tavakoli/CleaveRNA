@@ -12,7 +12,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, brier_score_loss
-from scipy.stats import entropy
 import pickle
 import tempfile
 import shutil
@@ -321,19 +320,18 @@ def train(args):
                         y_true = df_test['Y'].reset_index(drop=True)
                         if len(y_true) != len(X_full):
                             y_true = y_true.iloc[:len(X_full)].reset_index(drop=True)
-                    y_pred, reliability_score, decision_score, entropies, _ = predict_with_confidence(model, X_std, y_true)
+                    Classification_score, reliability_score, decision_score, _ = predict_with_confidence(model, X_std, y_true)
                     # Calculate predict_proba for predicted data
                     predict_proba = model.predict_proba(X_std)[:, 1] if model.predict_proba(X_std).shape[1] >= 2 else model.predict_proba(X_std)[:, 0]
                     margin = np.abs(decision_score)
                     combined_score = reliability_score * margin
                     result_df = pd.DataFrame({
                         'id2': df_test['id2'] if 'id2' in df_test.columns else range(len(df_test)),
-                        'y_pred': y_pred,
+                        'Classification_score': Classification_score,
                         'reliability_score': reliability_score,
                         'predict_proba': predict_proba,
                         'decision_score': decision_score,
                         'margin': margin,
-                        'entropy': entropies,
                         'combined_score': combined_score
                     })
                     # Add target_file column after id2 using all_generated_merged_num.csv
@@ -389,7 +387,7 @@ def train(args):
         feature_set_predicted_path = os.path.join(args.output_dir, f"{model_name}_feature_set_predicted.csv")
         df_cs_dz = pd.read_csv(cs_dz_file_path)
         df_feature_set = pd.read_csv(feature_set_predicted_path)
-        keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'y_pred', 'reliability_score', 'decision_score', 'entropy', 'brier_score'] if col in df_feature_set.columns]
+        keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_feature_set.columns]
         df_feature_set = df_feature_set[keep_cols]
         cols_to_remove = [col for col in df_feature_set.columns if col in ['id2.1', 'seq2.1', 'target_file.1'] or col.startswith('id2.') or col.startswith('seq2.') or col.startswith('target_file.')]
         if cols_to_remove:
@@ -397,7 +395,7 @@ def train(args):
         df_feature_set.to_csv(feature_set_predicted_path, index=False)
         report_file_status(feature_set_predicted_path, "Updated feature set predicted")
         df_feature_set = pd.read_csv(feature_set_predicted_path)
-        df_feature_set = df_feature_set.sort_values(by=['y_pred', 'reliability_score'], ascending=[False, False])
+        df_feature_set = df_feature_set.sort_values(by=['Classification_score', 'reliability_score'], ascending=[False, False])
         df_feature_set.to_csv(feature_set_predicted_path, index=False)
         report_file_status(feature_set_predicted_path, "Sorted feature set predicted")
     elif args.user_train_mode:
@@ -544,19 +542,18 @@ def train(args):
             X_test = pd.read_csv(test_file)
             X = model_data['imputer'].transform(X_test)
             X = model_data['scaler'].transform(X)
-            y_pred, reliability_score, decision_score, entropies, brier = predict_with_confidence(model_data['model'], X)
+            Classification_score, reliability_score, decision_score, brier = predict_with_confidence(model_data['model'], X)
             df_pred = X_test.copy()
-            df_pred['y_pred'] = y_pred
+            df_pred['Classification_score'] = Classification_score
             df_pred['reliability_score'] = reliability_score
             df_pred['decision_score'] = decision_score
-            df_pred['entropy'] = entropies
             if brier is not None:
                 df_pred['brier_score'] = brier
-            # Remove feature columns, keep only id2, seq2, target_file, y_pred, reliability_score, decision_score, entropy, brier_score
-            keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'y_pred', 'reliability_score', 'decision_score', 'entropy', 'brier_score'] if col in df_pred.columns]
+            # Remove feature columns, keep only id2, seq2, target_file, Classification_score, reliability_score, decision_score, brier_score
+            keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_pred.columns]
             df_pred = df_pred[keep_cols]
-            # Set column order: id2, target_file, seq2, y_pred, then others
-            ordered_cols = ['id2', 'target_file', 'seq2', 'y_pred']
+            # Set column order: id2, target_file, seq2, Classification_score, then others
+            ordered_cols = ['id2', 'target_file', 'seq2', 'Classification_score']
             other_cols = [col for col in df_pred.columns if col not in ordered_cols]
             final_cols = [col for col in ordered_cols if col in df_pred.columns] + other_cols
             df_pred = df_pred[final_cols]
@@ -607,17 +604,16 @@ def predict_with_confidence(model, X, y_true=None):
     """
     Returns predictions, reliability score (predict_proba),
     decision_function (distance to boundary),
-    entropy of probabilities, and Brier score (if y_true provided).
+    and Brier score (if y_true provided).
     """
-    y_pred = model.predict(X)
+    Classification_score = model.predict(X)
     y_proba = model.predict_proba(X)
     reliability_score = y_proba[:, 1] if y_proba.shape[1] >= 2 else y_proba[:, 0]
     decision_score = model.decision_function(X)
-    entropies = entropy(y_proba.T, base=2)  # entropy per sample
     brier = None
     if y_true is not None:
         brier = brier_score_loss(y_true, reliability_score)
-    return y_pred, reliability_score, decision_score, entropies, brier
+    return Classification_score, reliability_score, decision_score, brier
 
 def read_fasta_sequence(fasta_file):
     """Read the first sequence from a fasta file as a single string."""

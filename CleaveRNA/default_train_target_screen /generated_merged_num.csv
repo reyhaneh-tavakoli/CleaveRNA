@@ -1,7 +1,7 @@
-id2,E_target_1_1,ED1_target_1_1,ED2_target_1_1,Pu1_target_1_1,Pu2_target_1_1,E_hybrid_target_1_1,P_E_target_1_1,E_target_1_2,ED1_target_1_2,ED2_target_1_2,Pu1_target_1_2,Pu2_target_1_2,E_hybrid_target_1_2,P_E_target_1_2,E_target_1_3,ED1_target_1_3,ED2_target_1_3,Pu1_target_1_3,Pu2_target_1_3,E_hybrid_target_1_3,P_E_target_1_3,E_target_2_1,ED1_target_2_1,ED2_target_2_1,Pu1_target_2_1,Pu2_target_2_1,E_hybrid_target_2_1,P_E_target_2_1,E_target_2_2,ED1_target_2_2,ED2_target_2_2,Pu1_target_2_2,Pu2_target_2_2,E_hybrid_target_2_2,P_E_target_2_2,E_target_2_3,ED1_target_2_3,ED2_target_2_3,Pu1_target_2_3,Pu2_target_2_3,E_hybrid_target_2_3,P_E_target_2_3
-UA-17-18,-11.73,1.81,0.27,0.0530361,0.645272,-13.81,0.59363,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-UA-17-18,,,,,,,,-21.18,6.65,3.37,2.06079e-05,0.00421995,-31.2,90.0857,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-UA-17-18,,,,,,,,,,,,,,,-8.94,0.49,0.49,0.451563,0.451563,-9.92,0.473238,,,,,,,,,,,,,,,,,,,,,
-CA-15-16,,,,,,,,,,,,,,,,,,,,,,-11.99,5.5,2.37,0.000133165,0.0213778,-19.86,0.560974,,,,,,,,,,,,,,
-CA-15-16,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-11.99,5.5,2.37,0.000133165,0.0213778,-19.86,0.560943,,,,,,,
-CA-15-16,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-17.04,2.38,2.38,0.0210338,0.0210338,-21.8,0.961363
+id2,E_target_2_1,ED1_target_2_1,ED2_target_2_1,Pu1_target_2_1,Pu2_target_2_1,E_hybrid_target_2_1,P_E_target_2_1,E_target_2_2,ED1_target_2_2,ED2_target_2_2,Pu1_target_2_2,Pu2_target_2_2,E_hybrid_target_2_2,P_E_target_2_2,E_target_2_3,ED1_target_2_3,ED2_target_2_3,Pu1_target_2_3,Pu2_target_2_3,E_hybrid_target_2_3,P_E_target_2_3,E_target_1_1,ED1_target_1_1,ED2_target_1_1,Pu1_target_1_1,Pu2_target_1_1,E_hybrid_target_1_1,P_E_target_1_1,E_target_1_2,ED1_target_1_2,ED2_target_1_2,Pu1_target_1_2,Pu2_target_1_2,E_hybrid_target_1_2,P_E_target_1_2,E_target_1_3,ED1_target_1_3,ED2_target_1_3,Pu1_target_1_3,Pu2_target_1_3,E_hybrid_target_1_3,P_E_target_1_3
+CA-15-16,-11.99,5.5,2.37,0.000133165,0.0213778,-19.86,0.560974,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+CA-15-16,,,,,,,,-11.99,5.5,2.37,0.000133165,0.0213778,-19.86,0.560943,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+CA-15-16,,,,,,,,,,,,,,,-17.04,2.38,2.38,0.0210338,0.0210338,-21.8,0.961363,,,,,,,,,,,,,,,,,,,,,
+UA-17-18,,,,,,,,,,,,,,,,,,,,,,-11.73,1.81,0.27,0.0530361,0.645272,-13.81,0.59363,,,,,,,,,,,,,,
+UA-17-18,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-21.18,6.65,3.37,2.06079e-05,0.00421995,-31.2,90.0857,,,,,,,
+UA-17-18,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-8.94,0.49,0.49,0.451563,0.451563,-9.92,0.473238
