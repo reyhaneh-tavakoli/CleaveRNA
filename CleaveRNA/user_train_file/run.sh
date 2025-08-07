@@ -13,18 +13,16 @@ conda activate intarna-env
 
 # Define script and input files
 script_dir="../CleaveRNA.py"  # Path to CleaveRNA.py
-
-USER_TRAIN_MODE="HPV.fasta"  # Space-separated FASTA files for training
-TARGETS="MERS.fasta"  # Space-separated FASTA files for prediction
+PREDICTION_TRAIN_MODE="MERS.fasta"  # Space-separated FASTA files for training
 PARAMS="test_default.csv"
-ML_TARGET="MERS_target.csv"  # Path to your target CSV file
+
 
 # Record the start time
 start_time=$(date)
 
-echo "Running in user train mode..."
+echo "Running in train mode..."
 output_dir=$(pwd)
-python3 "$script_dir" --user_train_mode $USER_TRAIN_MODE --targets $TARGETS --params $PARAMS --feature_mode default --output_dir "$output_dir" --model_name "MERS" --ML_target "$ML_TARGET"
+python3 "$script_dir" --train_mode $PREDICTION_TRAIN_MODE --params $PARAMS --feature_mode default --output_dir "$output_dir" --model_name "MERS" 
 
 # Record the end time
 end_time=$(date)

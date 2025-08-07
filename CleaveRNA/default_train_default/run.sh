@@ -23,14 +23,14 @@ ML_TARGET="HPBC_target.csv"
 # Record the start time
 start_time=$(date)
 
-# Default mode
-echo "Running in default mode..."
+# prwdiction mode
+echo "Running in prediction mode..."
 output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
   --targets $TARGETS \
   --params $PARAMS \
   --feature_mode default \
-  --default_train_mode $DEFAULT_TRAIN_FILE \
+  --prediction_mode $DEFAULT_TRAIN_FILE \
   --model_name $MODEL_NAME \
   --ML_target $ML_TARGET \
   --output_dir "$output_dir"
@@ -41,3 +41,4 @@ end_time=$(date)
 # Print the start and end times
 echo "Start time: $start_time"
 echo "End time: $end_time"
+

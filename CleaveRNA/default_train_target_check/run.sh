@@ -16,7 +16,7 @@ script_path="../CleaveRNA.py"  # Path to CleaveRNA.py
 # Define the input files and parameters
 TARGETS="target_1.fasta target_2.fasta"  # Space-separated FASTA files
 PARAMS="test_target_check.csv"
-DEFAULT_TRAIN_FILE="HPBC_default_merged_num.csv"  # The actual default train CSV file
+PREDICTION_MODE_FILE="HPBC_default_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="HPBC"
 ML_TARGET="HPBC_target.csv"
 
@@ -24,13 +24,13 @@ ML_TARGET="HPBC_target.csv"
 start_time=$(date)
 
 # Default mode
-echo "Running in default mode..."
+echo "Running in prediction mode..."
 output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
   --targets $TARGETS \
   --params $PARAMS \
   --feature_mode target_check \
-  --default_train_mode $DEFAULT_TRAIN_FILE \
+  --prediction_mode $PREDICTION_MODE_FILE \
   --model_name $MODEL_NAME \
   --ML_target $ML_TARGET \
   --output_dir "$output_dir"
