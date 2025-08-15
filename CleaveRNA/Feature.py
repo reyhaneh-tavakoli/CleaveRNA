@@ -126,8 +126,8 @@ def process_specific_query(csv_file, output_dir):
         
         lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), output_dir, temperature)
         
-        # Use parameters.cfg for IntaRNA, not the csv file
-        param_file = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
+        # Use parameters.cfg for IntaRNA, from the output directory
+        param_file = os.path.join(output_dir, 'parameters.cfg')
         process_intarna_queries(target_file, query_file, lunp_file, param_file, len(LA_seq), len(RA_seq), output_prefix, CS)
         
         # Post-process the features
@@ -636,7 +636,7 @@ def main(args=None):
             output_dir = f"rnaplfold_output_{output_prefix}"
             os.makedirs(output_dir, exist_ok=True)
             lunp_file = run_rnaplfold(target_file, LA, RA, output_dir, temperature)
-            param_file = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
+            param_file = os.path.join(args.output_dir, 'parameters.cfg')
             process_intarna_queries(target_file, query_file, lunp_file, param_file, LA, RA, output_prefix, motif)
             post_process_features(target_file, output_dir)
 
@@ -736,7 +736,7 @@ def main(args=None):
             output_dir = f"rnaplfold_output_{output_prefix}"
             os.makedirs(output_dir, exist_ok=True)
             lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), output_dir, temperature)
-            param_file = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
+            param_file = os.path.join(args.output_dir, 'parameters.cfg')
             process_intarna_queries(target_file, query_file, lunp_file, param_file, len(LA_seq), len(RA_seq), output_prefix, CS)
             post_process_features(target_file, output_dir)
 
@@ -772,7 +772,7 @@ def main(args=None):
 
     print("Query generation completed for all modes.")
 
-    args.cfg = os.path.join(os.path.dirname(__file__), 'parameters.cfg')
+    args.cfg = os.path.join(args.output_dir, 'parameters.cfg')
 
     params_df = pd.read_csv(args.params)
     if not {'LA', 'RA', 'CS', 'Tem', 'CA'}.issubset(params_df.columns):

@@ -14,8 +14,101 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, brier_score_loss
 import pickle
 import tempfile
+import time
+from tqdm import tqdm
+import threading
 
-def create_cfg_file(params_file):
+# Progress tracking and UI enhancements
+class ProgressTracker:
+    def __init__(self, total_steps=100):
+        self.total_steps = total_steps
+        self.current_step = 0
+        self.start_time = time.time()
+        self.step_times = []
+        self.pbar = None
+        
+    def start(self, description="Processing"):
+        """Initialize progress bar"""
+        self.pbar = tqdm(total=self.total_steps, desc=description, 
+                        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
+        
+    def update(self, steps=1, description=None):
+        """Update progress bar"""
+        if self.pbar:
+            self.current_step += steps
+            if description:
+                self.pbar.set_description(description)
+            self.pbar.update(steps)
+            
+    def finish(self):
+        """Close progress bar"""
+        if self.pbar:
+            self.pbar.close()
+            
+    def step_success(self, step_name, duration=None):
+        """Report successful completion of a step with sticker"""
+        success_stickers = ['✅', '🎉', '✨', '🚀', '⭐', '💫']
+        sticker = np.random.choice(success_stickers)
+        if duration:
+            print(f"{sticker} {step_name} completed successfully in {duration:.2f}s")
+        else:
+            print(f"{sticker} {step_name} completed successfully")
+            
+    def estimate_remaining_time(self):
+        """Estimate remaining time based on completed steps"""
+        if self.current_step > 0:
+            elapsed = time.time() - self.start_time
+            avg_time_per_step = elapsed / self.current_step
+            remaining_steps = self.total_steps - self.current_step
+            estimated_remaining = avg_time_per_step * remaining_steps
+            return estimated_remaining
+        return 0
+
+def predict_execution_time(args):
+    """Predict estimated execution time based on input parameters"""
+    base_time = 10  # Base processing time in seconds
+    
+    # Factor in the number of target files
+    if args.targets:
+        file_factor = len(args.targets) * 5  # 5 seconds per target file
+    elif args.train_mode:
+        file_factor = len(args.train_mode) * 8  # 8 seconds per training file
+    else:
+        file_factor = 5
+    
+    # Factor in feature mode complexity
+    feature_complexity = {
+        'default': 1.0,
+        'target_screen': 1.5,
+        'target_check': 1.2,
+        'specific_query': 0.8
+    }
+    
+    mode_factor = feature_complexity.get(args.feature_mode, 1.0)
+    
+    # Factor in prediction vs training mode
+    if args.prediction_mode:
+        mode_time = 20  # Prediction mode takes longer
+    elif args.train_mode:
+        mode_time = 15  # Training mode
+    else:
+        mode_time = 10
+    
+    estimated_time = (base_time + file_factor + mode_time) * mode_factor
+    return estimated_time
+
+def format_time(seconds):
+    """Format time in human readable format"""
+    if seconds < 60:
+        return f"{seconds:.1f} seconds"
+    elif seconds < 3600:
+        minutes = seconds / 60
+        return f"{minutes:.1f} minutes"
+    else:
+        hours = seconds / 3600
+        return f"{hours:.1f} hours"
+
+def create_cfg_file(params_file, output_dir='.'):
     """Generates the parameters.cfg file with settings based on the given params CSV file."""
     import pandas as pd
 
@@ -36,31 +129,44 @@ accL=100
 seedBP=5
 outSep=,
 """
-    # Save the parameters.cfg file in the same directory as the main script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    cfg_file_path = os.path.join(script_dir, "parameters.cfg")
+    # Save the parameters.cfg file in the output directory
+    os.makedirs(output_dir, exist_ok=True)
+    cfg_file_path = os.path.join(output_dir, "parameters.cfg")
     with open(cfg_file_path, "w") as cfg_file:
         cfg_file.write(cfg_content)
-    print(f"Configuration file 'parameters.cfg' created at {cfg_file_path} with temperature from params CSV.")
+    # Suppress the creation message
+    return cfg_file_path
 
 def report_file_status(file_path, description):
+    error_stickers = ['❌', '⚠️', '💥']
+    
     if os.path.exists(file_path):
-        print(f"Success: {description} generated successfully at {file_path}.")
+        # Only show errors, suppress success messages
+        pass
     else:
-        print(f"Error: {description} was not generated.")
+        sticker = np.random.choice(error_stickers)
+        print(f"{sticker} Error: {description} was not generated.")
 
 def report_empty_file(file_path, description):
+    warning_stickers = ['⚠️', '🚨', '⏰']
+    
     if os.path.exists(file_path):
         if os.path.getsize(file_path) == 0:
-            print(f"Warning: {description} is empty and will be skipped: {file_path}.")
+            sticker = np.random.choice(warning_stickers)
+            print(f"{sticker} Warning: {description} is empty and will be skipped: {file_path}.")
             return True
     else:
-        print(f"Warning: {description} does not exist: {file_path}.")
+        sticker = np.random.choice(warning_stickers)
+        print(f"{sticker} Warning: {description} does not exist: {file_path}.")
         return True
     return False
 
-def train_and_save_svm(train_data_path, model_name, feature_set_name):
-    print(f"\nTraining SVM model for {model_name} using data from {train_data_path}")
+def train_and_save_svm(train_data_path, model_name, feature_set_name, progress_tracker=None):
+    step_start_time = time.time()
+    # Suppressed SVM training message
+
+    if progress_tracker:
+        progress_tracker.update(2, f"Loading training data for {model_name}")
 
     df = pd.read_csv(train_data_path)
     if 'Y' not in df.columns:
@@ -69,15 +175,21 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name):
     # Check class balance and balance if needed
     y_counts = df['Y'].value_counts()
     if len(y_counts) == 2 and y_counts.iloc[0] != y_counts.iloc[1]:
-        print(f"Class imbalance detected: {y_counts.to_dict()}. Balancing by downsampling...")
+        # Suppressed balance detection message
+        if progress_tracker:
+            progress_tracker.update(1, "Balancing classes")
         min_count = y_counts.min()
         df_balanced = df.groupby('Y', group_keys=False).apply(lambda x: x.sample(min_count, random_state=42)).reset_index(drop=True)
         df = df_balanced
-        print(f"Balanced class counts: {df['Y'].value_counts().to_dict()}")
+        # Suppressed balance success message
     elif len(y_counts) == 2:
-        print(f"Classes are already balanced: {y_counts.to_dict()}")
+        # Suppressed already balanced message
+        pass
     else:
-        print(f"Warning: Only one class present in target column. SVM training may fail.")
+        print("⚠️ Warning: Only one class present in target column. SVM training may fail.")
+
+    if progress_tracker:
+        progress_tracker.update(2, "Preprocessing features")
 
     X_df = df.drop(columns=['Y'])
     y = df['Y']
@@ -89,6 +201,9 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name):
     # Scale the features
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
+
+    if progress_tracker:
+        progress_tracker.update(3, f"Training SVM model for {model_name}")
 
     # Train SVM
     svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
@@ -103,13 +218,21 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name):
             'imputer': imputer,
             'feature_columns': X_df.columns.tolist()
         }, f)
-    print(f"Saved trained model to {model_file}")
+    
+    step_duration = time.time() - step_start_time
+    if progress_tracker:
+        progress_tracker.step_success(f"SVM model training for {model_name}", step_duration)
+        progress_tracker.update(2, "Running cross-validation")
+    else:
+        # Suppressed model save message
+        pass
 
-    # Cross-validation
-    perform_cross_validation(X, y, model_name, feature_set_name)
+    # Cross-validation with suppressed output
+    perform_cross_validation(X, y, model_name, feature_set_name, progress_tracker)
 
-def perform_cross_validation(X, y, model_name, feature_set_name):
-    print(f"\nRunning 5-fold cross-validation for {model_name} ({feature_set_name})...")
+def perform_cross_validation(X, y, model_name, feature_set_name, progress_tracker=None):
+    step_start_time = time.time()
+    # Suppressed cross-validation output
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
 
@@ -117,6 +240,9 @@ def perform_cross_validation(X, y, model_name, feature_set_name):
     proba_results = []  # Store predict_proba results for each fold
 
     for fold, (train_idx, test_idx) in enumerate(skf.split(X, y)):
+        if progress_tracker:
+            progress_tracker.update(1, f"Cross-validation fold {fold+1}/5")
+        
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
         svm.fit(X_train, y_train)
@@ -129,14 +255,7 @@ def perform_cross_validation(X, y, model_name, feature_set_name):
         scores['recall'].append(recall_score(y_test, preds))
         scores['f1'].append(f1_score(y_test, preds))
 
-    print("\nCross-validation results:")
-    for metric, values in scores.items():
-        print(f"{metric.capitalize()}: {np.mean(values):.3f} ± {np.std(values):.3f}")
-
-    # Optionally print or process the probability results
-    print("\nSample predict_proba output from first fold:")
-    if proba_results:
-        print(proba_results[0])
+    # Suppress cross-validation results output
 
     # Save cross-validation results to a CSV file
     metrics_file = f"{model_name}_ML_metrics_{feature_set_name}.csv"
@@ -146,283 +265,397 @@ def perform_cross_validation(X, y, model_name, feature_set_name):
         'Std': [np.std(scores['accuracy']), np.std(scores['precision']), np.std(scores['recall']), np.std(scores['f1'])]
     })
     metrics_df.to_csv(metrics_file, index=False)
+    
+    step_duration = time.time() - step_start_time
+    if progress_tracker:
+        progress_tracker.step_success(f"Cross-validation for {feature_set_name}", step_duration)
+    
     report_file_status(metrics_file, f"ML metrics for {feature_set_name}")
 
 def train(args):
-    # Ensure the output directory exists
-    if args.output_dir:
-        os.makedirs(args.output_dir, exist_ok=True)
-        print(f"Output directory set to: {args.output_dir}")
-
-    # Skip initial Feature.py run for train_mode as it handles its own feature generation
-    if not args.train_mode:
-        # Ensure Feature.py is executed to generate the required file
-        print("Running Feature.py to generate 'all_generated_merged_num.csv'...")
-        # Convert the list of targets to a comma-separated string
-        targets_arg = ','.join(args.targets) if args.targets else ''
-        # Ensure the correct working directory is set for Feature.py
-        feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
-        feature_command = f"python3 {feature_script_path} --targets {targets_arg} --params {args.params} --feature_mode {args.feature_mode} --output_dir {args.output_dir}"
-        try:
-            subprocess.run(feature_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("Feature.py executed successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error: Feature.py execution failed with error: {e}")
-            sys.exit(1)
-
-        # Retry mechanism to check for 'all_generated_merged_num.csv'
-        import time
-        retries = 5
-        output_file_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
-        for attempt in range(retries):
-            if os.path.exists(output_file_path):
-                print(f"Success: 'all_generated_merged_num.csv' was generated at {output_file_path}.")
-                break
-            else:
-                print(f"Attempt {attempt + 1}/{retries}: 'all_generated_merged_num.csv' not found at {output_file_path}. Retrying in 2 seconds...")
-                time.sleep(2)
-        else:
-            print(f"Error: 'all_generated_merged_num.csv' was not generated by Feature.py after multiple attempts. Checked path: {output_file_path}")
-            sys.exit(1)
-
+    # Initialize progress tracking
+    estimated_time = predict_execution_time(args)
+    print(f"\n🚀 Starting CleaveRNA analysis...")
+    print(f"⏱️ Estimated execution time: {format_time(estimated_time)}")
+    
+    # Determine total steps based on mode
     if args.prediction_mode:
-        model_name = args.model_name
-        params_file = args.prediction_mode
-        target_file = args.ML_target
-
-        # File paths
-        default_merged_file = f"{model_name}_default_merged_num.csv"
-        # target_file = f"{model_name}_target.csv"
-
-        if not os.path.exists(default_merged_file) or not os.path.exists(target_file):
-            print(f"Error: Required files '{default_merged_file}' or '{target_file}' do not exist.")
-            sys.exit(1)
-
-        # Check for empty result files
-        result_files = [
-            f"{model_name}_Results_with_region.csv",
-            f"{model_name}_Results_without_region.csv",
-            f"{model_name}_Results_pairwise.csv"
-        ]
-
-        for result_file in result_files:
-            if report_empty_file(result_file, "Result file"):
-                continue
-
-        # Calculate mean and std for default_merged_file
-        df_default = pd.read_csv(default_merged_file)
-        mean_std = df_default.describe().loc[['mean', 'std']]
-        mean_std_file = f"{model_name}_default_train_statistics.csv"
-        mean_std.to_csv(mean_std_file)
-        report_file_status(mean_std_file, "Default train statistics")
-
-        # Standardize numerical columns while keeping the 'id2' column
-        df_standardized = df_default.copy()
-        for column in df_standardized.columns:
-            if column != 'id2':
-                df_standardized[column] = (df_standardized[column] - mean_std.loc['mean', column]) / mean_std.loc['std', column]
-        standardized_file = f"{model_name}_standardized_default_train.csv"
-        df_standardized.to_csv(standardized_file, index=False)
-        report_file_status(standardized_file, "Standardized default train")
-
-        # Balance target file
-        df_target = pd.read_csv(target_file)
-        np.random.seed(89273554)
-        df_balanced = df_target.groupby('Y', group_keys=False).apply(
-            lambda x: x.sample(df_target['Y'].value_counts().min(), random_state=89273554)
-        )
-        balanced_file = f"{model_name}_balanced_target.csv"
-        df_balanced.to_csv(balanced_file, index=False)
-        report_file_status(balanced_file, "Balanced target")
-
-        df_non_balanced = df_target[~df_target.index.isin(df_balanced.index)]
-        non_balanced_file = f"{model_name}_non_balanced_target.csv"
-        df_non_balanced.to_csv(non_balanced_file, index=False)
-        report_file_status(non_balanced_file, "Non-balanced target")
-
-        # Merge standardized_default_train with balanced_target
-        df_merged_train = pd.merge(df_standardized, df_balanced, on='id2')
-        merged_train_file = f"{model_name}_default_ML_train.csv"
-        df_merged_train.to_csv(merged_train_file, index=False)
-        report_file_status(merged_train_file, "Default ML train")
-
-        # Merge standardized_default_train with non_balanced_target
-        df_merged_test = pd.merge(df_standardized, df_non_balanced, on='id2')
-        merged_test_file = f"{model_name}_default_ML_test.csv"
-        df_merged_test.to_csv(merged_test_file, index=False)
-        report_file_status(merged_test_file, "Default ML test")
-
-        # Define the single feature set
-        feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
-
-        df_train = pd.read_csv(merged_train_file)
-        feature_set_with_y = feature_set + ['Y']
-        feature_set_file = f"{model_name}_default_ML_train_feature_set.csv"
-        df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
-        report_file_status(feature_set_file, "Default ML train feature set")
-
-        # Ensure proper standardization of columns in all_generated_merged_num.csv using HPBC_default_train_statistics.csv
-        mean_std_file = f"{model_name}_default_train_statistics.csv"
-        mean_std = pd.read_csv(mean_std_file, index_col=0)
-        df_generated = pd.read_csv("all_generated_merged_num.csv")
-        df_standardized_generated = df_generated.copy()
-
-        # Standardize only columns present in mean_std
-        for column in mean_std.columns:
-            if column in df_standardized_generated.columns:
-                df_standardized_generated[column] = (df_standardized_generated[column] - mean_std.loc['mean', column]) / mean_std.loc['std', column]
-
-        # Retain id2 column and standardized columns
-        df_standardized_generated = df_standardized_generated[['id2'] + list(mean_std.columns)]
-        standardized_generated_file = "standardized_all_generated_merged_num.csv"
-        df_standardized_generated.to_csv(standardized_generated_file, index=False)
-        report_file_status(standardized_generated_file, "Standardized generated merged num")
-
-        # Extract feature set from standardized_generated_merged_num
-        generated_feature_set_file = "generated_ML_test_feature_set.csv"
-        df_standardized_generated[feature_set].to_csv(generated_feature_set_file, index=False)
-        report_file_status(generated_feature_set_file, "Generated ML test feature set")
-
-        # Train and save SVM model for the single feature set
-        train_and_save_svm(f"{model_name}_default_ML_train_feature_set.csv", model_name, "default_train_feature_set")
-
-        # Predict for default train mode
-        print("\nProcessing predictions for default_train_feature_set...")
-        pickle_file = f"{model_name}-default_train_feature_set-SVM.pkl"
-        test_file = "generated_ML_test_feature_set.csv"
-        output_file = f"{model_name}_feature_set_predicted.csv"
-        model_file = os.path.join(args.output_dir, pickle_file)
-        output_path = os.path.join(args.output_dir, output_file)
-        if not os.path.exists(model_file):
-            print(f"\u26a0 {model_file} not found. Skipping.")
-        else:
-            with open(model_file, 'rb') as f:
-                model_bundle = pickle.load(f)
-            model = model_bundle['model']
-            imputer = model_bundle['imputer']
-            feature_columns = model_bundle['feature_columns']
-            test_file_path = os.path.join(args.output_dir, test_file)
-            if not os.path.exists(test_file_path):
-                print(f"\u26a0 {test_file_path} not found. Skipping.")
-            else:
-                df_test = pd.read_csv(test_file_path)
-                available_columns = [col for col in feature_columns if col in df_test.columns]
-                if not available_columns:
-                    print(f"\u26a0 No matching feature columns found in {test_file_path}. Skipping.")
-                else:
-                    X_full = pd.DataFrame(0, index=range(len(df_test)), columns=feature_columns)
-                    for col in available_columns:
-                        X_full[col] = df_test[col]
-                    X_imputed = imputer.transform(X_full)
-                    scaler = StandardScaler()
-                    X_std = scaler.fit_transform(X_imputed)
-                    y_true = None
-                    if 'Y' in df_test.columns:
-                        y_true = df_test['Y'].reset_index(drop=True)
-                        if len(y_true) != len(X_full):
-                            y_true = y_true.iloc[:len(X_full)].reset_index(drop=True)
-                    Classification_score, reliability_score, decision_score, _ = predict_with_confidence(model, X_std, y_true)
-                    # Calculate predict_proba for predicted data
-                    predict_proba = model.predict_proba(X_std)[:, 1] if model.predict_proba(X_std).shape[1] >= 2 else model.predict_proba(X_std)[:, 0]
-                    margin = np.abs(decision_score)
-                    combined_score = reliability_score * margin
-                    result_df = pd.DataFrame({
-                        'id2': df_test['id2'] if 'id2' in df_test.columns else range(len(df_test)),
-                        'Classification_score': Classification_score,
-                        'reliability_score': reliability_score,
-                        'predict_proba': predict_proba,
-                        'decision_score': decision_score,
-                        'margin': margin,
-                        'combined_score': combined_score
-                    })
-                    # Add target_file column after id2 using all_generated_merged_num.csv
-                    all_gen = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
-                    id2_to_target = dict(zip(all_gen['id2'], all_gen['target_file'])) if 'target_file' in all_gen.columns else {}
-                    # Insert target_file column after id2
-                    result_df.insert(1, 'target_file', result_df['id2'].map(id2_to_target) if id2_to_target else None)
-                    result_df.to_csv(output_path, index=False)
-                    print(f"\u2713 Prediction result saved to {output_path}")
-
-                    # After saving prediction result, set id2, seq2, and target_file columns from CS_Dz.csv by row order
-                    cs_dz_path = os.path.join(args.output_dir, "CS_Dz.csv")
-                    if os.path.exists(cs_dz_path):
-                        df_cs_dz = pd.read_csv(cs_dz_path)
-                        # Set id2, seq2, and target_file columns by row order
-                        if len(result_df) == len(df_cs_dz):
-                            result_df['id2'] = df_cs_dz['id2'].astype(str).values
-                            result_df['seq2'] = df_cs_dz['seq2'].values
-                            result_df['target_file'] = df_cs_dz['target_file'].values
-                            # Ensure column order: id2, seq2, target_file, ...
-                            cols = list(result_df.columns)
-                            for col in ['id2', 'seq2', 'target_file']:
-                                if col in cols:
-                                    cols.insert(['id2', 'seq2', 'target_file'].index(col), cols.pop(cols.index(col)))
-                            result_df = result_df[cols]
-                            result_df.to_csv(output_path, index=False)
-                            print("✓ Prediction result columns set from CS_Dz mapping by row order (id2, seq2, target_file).")
-                        else:
-                            print("Warning: Row count mismatch between prediction and CS_Dz.csv. Columns not replaced.")
-                    else:
-                        print(f"Warning: CS_Dz.csv not found at {cs_dz_path}, id2/seq2/target_file columns not replaced.")
-        # Save id2 and seq2 columns of all_generated_merged_num as CS_Dz.csv
-        df_all_generated = pd.read_csv("all_generated_merged_num.csv")
-        cs_dz_file = "CS_Dz.csv"
-        # Always use the target_file column from <model_name>_all_generated_merged_num.csv, which is generated from --targets
-        if 'target_file' in df_all_generated.columns:
-            df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
-        else:
-            # If target_file column is missing, infer it from the FASTA file names given in --targets
-            fasta_targets = args.targets if isinstance(args.targets, list) else args.targets.split(',')
-            # Map id2 to target_file by order if possible
-            df_all_generated['target_file'] = None
-            if len(fasta_targets) == len(df_all_generated):
-                df_all_generated['target_file'] = fasta_targets
-            else:
-                # fallback: use the first target file for all
-                df_all_generated['target_file'] = fasta_targets[0] if fasta_targets else None
-            df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
-        report_file_status(cs_dz_file, "CS_Dz file")
-
-        # Add id2, seq2, and target_file columns of CS_Dz.csv to model-prefixed feature_set_predicted.csv
-        cs_dz_file_path = os.path.join(args.output_dir, cs_dz_file)
-        feature_set_predicted_path = os.path.join(args.output_dir, f"{model_name}_feature_set_predicted.csv")
-        df_cs_dz = pd.read_csv(cs_dz_file_path)
-        df_feature_set = pd.read_csv(feature_set_predicted_path)
-        keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_feature_set.columns]
-        df_feature_set = df_feature_set[keep_cols]
-        cols_to_remove = [col for col in df_feature_set.columns if col in ['id2.1', 'seq2.1', 'target_file.1'] or col.startswith('id2.') or col.startswith('seq2.') or col.startswith('target_file.')]
-        if cols_to_remove:
-            df_feature_set = df_feature_set.drop(columns=cols_to_remove)
-        df_feature_set.to_csv(feature_set_predicted_path, index=False)
-        report_file_status(feature_set_predicted_path, "Updated feature set predicted")
-        df_feature_set = pd.read_csv(feature_set_predicted_path)
-        df_feature_set = df_feature_set.sort_values(by=['Classification_score', 'reliability_score'], ascending=[False, False])
-        df_feature_set.to_csv(feature_set_predicted_path, index=False)
-        report_file_status(feature_set_predicted_path, "Sorted feature set predicted")
+        total_steps = 25  # More steps for prediction mode
     elif args.train_mode:
-        model_name = args.model_name
-        user_train_files = args.train_mode
-        # 1. First run: generate user_merged_num from user_train_file FASTA files
-        feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
-        user_merged_file = os.path.join(args.output_dir, f"{model_name}_user_merged_num.csv")
-        user_train_command = f"python3 {feature_script_path} --targets {','.join(user_train_files)} --params {args.params} --feature_mode default --output_dir {args.output_dir}"
-        try:
-            subprocess.run(user_train_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("Feature.py executed for user_train_file FASTA files.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error: Feature.py execution failed for user_train_file with error: {e}")
-            sys.exit(1)
-        # Rename all_generated_merged_num.csv to <model_name>_user_merged_num.csv
-        default_generated_file = os.path.join(args.output_dir, "all_generated_merged_num.csv")
-        if os.path.exists(default_generated_file):
-            os.rename(default_generated_file, user_merged_file)
-            print(f"Renamed {default_generated_file} to {user_merged_file}")
-            print(f"✓ User train mode completed successfully. Output file: {user_merged_file}")
-        else:
-            print(f"Error: {default_generated_file} not found after first Feature.py run.")
-            sys.exit(1)
+        total_steps = 15  # Fewer steps for train mode
     else:
-        print("Error: Either --prediction_mode or --train_mode must be provided.")
+        total_steps = 10
+    
+    progress = ProgressTracker(total_steps)
+    progress.start("CleaveRNA Processing")
+    
+    try:
+        # Step 1: Setup output directory
+        step_start = time.time()
+        if args.output_dir:
+            os.makedirs(args.output_dir, exist_ok=True)
+            print(f"📁 Output directory set to: {args.output_dir}")
+        progress.update(1, "Setting up output directory")
+        progress.step_success("Output directory setup", time.time() - step_start)
+
+        # Skip initial Feature.py run for train_mode as it handles its own feature generation
+        if not args.train_mode:
+            # Step 2: Run Feature.py
+            step_start = time.time()
+            print("🔧 Running Feature.py to generate 'all_generated_merged_num.csv'...")
+            targets_arg = ','.join(args.targets) if args.targets else ''
+            feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
+            feature_command = f"python3 {feature_script_path} --targets {targets_arg} --params {args.params} --feature_mode {args.feature_mode} --output_dir {args.output_dir}"
+            
+            progress.update(2, "Executing Feature.py")
+            try:
+                subprocess.run(feature_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                progress.step_success("Feature.py execution", time.time() - step_start)
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Error: Feature.py execution failed with error: {e}")
+                sys.exit(1)
+
+            # Step 3: Verify output file generation
+            step_start = time.time()
+            progress.update(1, "Verifying output file generation")
+            retries = 5
+            output_file_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
+            for attempt in range(retries):
+                if os.path.exists(output_file_path):
+                    progress.step_success("Output file verification", time.time() - step_start)
+                    break
+                else:
+                    print(f"🔄 Attempt {attempt + 1}/{retries}: 'all_generated_merged_num.csv' not found. Retrying...")
+                    time.sleep(2)
+            else:
+                print(f"❌ Error: 'all_generated_merged_num.csv' was not generated after multiple attempts.")
+                sys.exit(1)
+
+        if args.prediction_mode:
+            model_name = args.model_name
+            target_file = args.ML_target
+            default_merged_file = args.prediction_mode
+
+            # Step 4: Validate required files
+            step_start = time.time()
+            progress.update(1, "Validating required files")
+            if not os.path.exists(default_merged_file) or not os.path.exists(target_file):
+                print(f"❌ Error: Required files '{default_merged_file}' or '{target_file}' do not exist.")
+                sys.exit(1)
+            progress.step_success("File validation", time.time() - step_start)
+
+            # Step 5: Check result files
+            step_start = time.time()
+            progress.update(1, "Checking result files")
+            result_files = [
+                f"{model_name}_Results_with_region.csv",
+                f"{model_name}_Results_without_region.csv",
+                f"{model_name}_Results_pairwise.csv"
+            ]
+            for result_file in result_files:
+                if report_empty_file(result_file, "Result file"):
+                    continue
+            progress.step_success("Result file check", time.time() - step_start)
+
+            # Step 6: Calculate statistics
+            step_start = time.time()
+            progress.update(2, "Calculating training statistics")
+            df_default = pd.read_csv(default_merged_file)
+            # Only calculate statistics for numeric columns
+            numeric_columns = df_default.select_dtypes(include=[np.number]).columns
+            mean_std = df_default[numeric_columns].describe().loc[['mean', 'std']]
+            mean_std_file = f"{model_name}_default_train_statistics.csv"
+            mean_std.to_csv(mean_std_file)
+            report_file_status(mean_std_file, "Default train statistics")
+            progress.step_success("Statistics calculation", time.time() - step_start)
+
+            # Step 7: Standardize data
+            step_start = time.time()
+            progress.update(2, "Standardizing training data")
+            df_standardized = df_default.copy()
+            # Only standardize numeric columns, skip text columns like 'id2', 'seq2', 'target_file'
+            non_numeric_columns = ['id2', 'seq2', 'target_file']
+            for column in df_standardized.columns:
+                if column not in non_numeric_columns and column in mean_std.columns:
+                    try:
+                        df_standardized[column] = (df_standardized[column] - mean_std.loc['mean', column]) / mean_std.loc['std', column]
+                    except (KeyError, TypeError):
+                        # Skip columns that can't be standardized
+                        continue
+            standardized_file = f"{model_name}_standardized_default_train.csv"
+            df_standardized.to_csv(standardized_file, index=False)
+            report_file_status(standardized_file, "Standardized default train")
+            progress.step_success("Data standardization", time.time() - step_start)
+
+            # Step 8: Balance target data
+            step_start = time.time()
+            progress.update(2, "Balancing target data")
+            df_target = pd.read_csv(target_file)
+            np.random.seed(89273554)
+            df_balanced = df_target.groupby('Y', group_keys=False).apply(
+                lambda x: x.sample(df_target['Y'].value_counts().min(), random_state=89273554)
+            )
+            balanced_file = f"{model_name}_balanced_target.csv"
+            df_balanced.to_csv(balanced_file, index=False)
+            report_file_status(balanced_file, "Balanced target")
+
+            # Skip generating non-balanced target and default ML test files
+            progress.step_success("Target data balancing", time.time() - step_start)
+
+            # Step 9: Merge training data
+            step_start = time.time()
+            progress.update(2, "Merging training datasets")
+            df_merged_train = pd.merge(df_standardized, df_balanced, on='id2')
+            merged_train_file = f"{model_name}_default_ML_train.csv"
+            df_merged_train.to_csv(merged_train_file, index=False)
+            report_file_status(merged_train_file, "Default ML train")
+
+            # Skip generating default ML test file
+            progress.step_success("Dataset merging", time.time() - step_start)
+
+            # Step 10: Prepare feature sets
+            step_start = time.time()
+            progress.update(1, "Preparing feature sets")
+            feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
+            df_train = pd.read_csv(merged_train_file)
+            feature_set_with_y = feature_set + ['Y']
+            feature_set_file = f"{model_name}_default_ML_train_feature_set.csv"
+            df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
+            report_file_status(feature_set_file, "Default ML train feature set")
+            progress.step_success("Feature set preparation", time.time() - step_start)
+
+            # Step 11: Standardize generated data
+            step_start = time.time()
+            progress.update(2, "Standardizing generated data")
+            mean_std_file = f"{model_name}_default_train_statistics.csv"
+            mean_std = pd.read_csv(mean_std_file, index_col=0)
+            df_generated = pd.read_csv("all_generated_merged_num.csv")
+            df_standardized_generated = df_generated.copy()
+
+            # Only standardize columns that exist in both dataframes and are numeric
+            for column in mean_std.columns:
+                if column in df_standardized_generated.columns:
+                    try:
+                        df_standardized_generated[column] = (df_standardized_generated[column] - mean_std.loc['mean', column]) / mean_std.loc['std', column]
+                    except (KeyError, TypeError):
+                        # Skip columns that can't be standardized
+                        continue
+
+            # Keep essential columns plus standardized numeric columns
+            essential_columns = ['id2', 'seq2', 'target_file']
+            columns_to_keep = [col for col in essential_columns if col in df_standardized_generated.columns] + list(mean_std.columns)
+            # Remove duplicates while preserving order
+            columns_to_keep = list(dict.fromkeys(columns_to_keep))
+            # Only keep columns that actually exist in the dataframe
+            columns_to_keep = [col for col in columns_to_keep if col in df_standardized_generated.columns]
+            df_standardized_generated = df_standardized_generated[columns_to_keep]
+            
+            standardized_generated_file = "standardized_all_generated_merged_num.csv"
+            df_standardized_generated.to_csv(standardized_generated_file, index=False)
+            report_file_status(standardized_generated_file, "Standardized generated merged num")
+
+            generated_feature_set_file = "generated_ML_test_feature_set.csv"
+            # Only select feature columns that exist in the dataframe
+            available_features = [col for col in feature_set if col in df_standardized_generated.columns]
+            if available_features:
+                df_standardized_generated[available_features].to_csv(generated_feature_set_file, index=False)
+            else:
+                print("⚠️ Warning: No feature set columns found in standardized data")
+            report_file_status(generated_feature_set_file, "Generated ML test feature set")
+            progress.step_success("Generated data standardization", time.time() - step_start)
+
+            # Step 12-17: Train SVM model (progress handled within function)
+            train_and_save_svm(f"{model_name}_default_ML_train_feature_set.csv", model_name, "default_train_feature_set", progress)
+
+            # Step 18: Make predictions
+            step_start = time.time()
+            progress.update(2, "Making predictions")
+            # Suppressed prediction processing message
+            pickle_file = f"{model_name}-default_train_feature_set-SVM.pkl"
+            test_file = "generated_ML_test_feature_set.csv"
+            output_file = f"{model_name}_feature_set_predicted.csv"
+            model_file = os.path.join(args.output_dir, pickle_file)
+            output_path = os.path.join(args.output_dir, output_file)
+            
+            if not os.path.exists(model_file):
+                print(f"⚠️ {model_file} not found. Skipping.")
+            else:
+                with open(model_file, 'rb') as f:
+                    model_bundle = pickle.load(f)
+                model = model_bundle['model']
+                imputer = model_bundle['imputer']
+                feature_columns = model_bundle['feature_columns']
+                test_file_path = os.path.join(args.output_dir, test_file)
+                
+                if not os.path.exists(test_file_path):
+                    print(f"⚠️ {test_file_path} not found. Skipping.")
+                else:
+                    df_test = pd.read_csv(test_file_path)
+                    available_columns = [col for col in feature_columns if col in df_test.columns]
+                    if not available_columns:
+                        print(f"⚠️ No matching feature columns found in {test_file_path}. Skipping.")
+                    else:
+                        X_full = pd.DataFrame(0, index=range(len(df_test)), columns=feature_columns)
+                        for col in available_columns:
+                            X_full[col] = df_test[col]
+                        X_imputed = imputer.transform(X_full)
+                        scaler = StandardScaler()
+                        X_std = scaler.fit_transform(X_imputed)
+                        y_true = None
+                        if 'Y' in df_test.columns:
+                            y_true = df_test['Y'].reset_index(drop=True)
+                            if len(y_true) != len(X_full):
+                                y_true = y_true.iloc[:len(X_full)].reset_index(drop=True)
+                        
+                        Classification_score, reliability_score, decision_score, _ = predict_with_confidence(model, X_std, y_true)
+                        predict_proba = model.predict_proba(X_std)[:, 1] if model.predict_proba(X_std).shape[1] >= 2 else model.predict_proba(X_std)[:, 0]
+                        margin = np.abs(decision_score)
+                        combined_score = reliability_score * margin
+                        
+                        result_df = pd.DataFrame({
+                            'id2': df_test['id2'] if 'id2' in df_test.columns else range(len(df_test)),
+                            'Classification_score': Classification_score,
+                            'reliability_score': reliability_score,
+                            'predict_proba': predict_proba,
+                            'decision_score': decision_score,
+                            'margin': margin,
+                            'combined_score': combined_score
+                        })
+                        
+                        all_gen = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
+                        id2_to_target = dict(zip(all_gen['id2'], all_gen['target_file'])) if 'target_file' in all_gen.columns else {}
+                        result_df.insert(1, 'target_file', result_df['id2'].map(id2_to_target) if id2_to_target else None)
+                        result_df.to_csv(output_path, index=False)
+                        # Suppress success message
+            
+            progress.step_success("Predictions", time.time() - step_start)
+
+            # Step 19: Process CS_Dz mapping - Extract id2, seq2, and target_file from CS_Dz file
+            step_start = time.time()
+            progress.update(1, "Processing CS_Dz mapping")
+            cs_dz_path = os.path.join(args.output_dir, "CS_Dz.csv")
+            if os.path.exists(cs_dz_path) and os.path.exists(output_path):
+                df_cs_dz = pd.read_csv(cs_dz_path)
+                result_df = pd.read_csv(output_path)
+                if len(result_df) == len(df_cs_dz):
+                    # Extract id2, seq2, and target_file from CS_Dz file and override in predicted results
+                    result_df['id2'] = df_cs_dz['id2'].astype(str).values
+                    if 'seq2' in df_cs_dz.columns:
+                        result_df['seq2'] = df_cs_dz['seq2'].values
+                    if 'target_file' in df_cs_dz.columns:
+                        result_df['target_file'] = df_cs_dz['target_file'].values
+                    
+                    # Reorder columns to put id2, seq2, target_file at the beginning
+                    cols = list(result_df.columns)
+                    priority_cols = ['id2', 'seq2', 'target_file']
+                    ordered_cols = []
+                    
+                    # Add priority columns first (if they exist)
+                    for col in priority_cols:
+                        if col in cols:
+                            ordered_cols.append(col)
+                            cols.remove(col)
+                    
+                    # Add remaining columns
+                    ordered_cols.extend(cols)
+                    result_df = result_df[ordered_cols]
+                    result_df.to_csv(output_path, index=False)
+                    print(f"✅ Updated predicted file with id2, seq2, and target_file from CS_Dz.csv")
+                else:
+                    print(f"⚠️ Warning: Row count mismatch between predicted results ({len(result_df)}) and CS_Dz file ({len(df_cs_dz)})")
+            else:
+                if not os.path.exists(cs_dz_path):
+                    print(f"⚠️ Warning: CS_Dz.csv not found at {cs_dz_path}")
+                if not os.path.exists(output_path):
+                    print(f"⚠️ Warning: Predicted output file not found at {output_path}")
+            progress.step_success("CS_Dz mapping", time.time() - step_start)
+
+            # Step 20: Save CS_Dz file
+            step_start = time.time()
+            progress.update(1, "Saving CS_Dz file")
+            df_all_generated = pd.read_csv("all_generated_merged_num.csv")
+            cs_dz_file = "CS_Dz.csv"
+            if 'target_file' in df_all_generated.columns:
+                df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
+            else:
+                fasta_targets = args.targets if isinstance(args.targets, list) else args.targets.split(',')
+                df_all_generated['target_file'] = None
+                if len(fasta_targets) == len(df_all_generated):
+                    df_all_generated['target_file'] = fasta_targets
+                else:
+                    df_all_generated['target_file'] = fasta_targets[0] if fasta_targets else None
+                df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
+            report_file_status(cs_dz_file, "CS_Dz file")
+            progress.step_success("CS_Dz file creation", time.time() - step_start)
+
+            # Step 21: Final processing
+            step_start = time.time()
+            progress.update(2, "Final result processing")
+            cs_dz_file_path = os.path.join(args.output_dir, cs_dz_file)
+            feature_set_predicted_path = os.path.join(args.output_dir, f"{model_name}_feature_set_predicted.csv")
+            if os.path.exists(cs_dz_file_path) and os.path.exists(feature_set_predicted_path):
+                df_cs_dz = pd.read_csv(cs_dz_file_path)
+                df_feature_set = pd.read_csv(feature_set_predicted_path)
+                keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_feature_set.columns]
+                df_feature_set = df_feature_set[keep_cols]
+                cols_to_remove = [col for col in df_feature_set.columns if col in ['id2.1', 'seq2.1', 'target_file.1'] or col.startswith('id2.') or col.startswith('seq2.') or col.startswith('target_file.')]
+                if cols_to_remove:
+                    df_feature_set = df_feature_set.drop(columns=cols_to_remove)
+                df_feature_set.to_csv(feature_set_predicted_path, index=False)
+                report_file_status(feature_set_predicted_path, "Updated feature set predicted")
+                
+                df_feature_set = pd.read_csv(feature_set_predicted_path)
+                df_feature_set = df_feature_set.sort_values(by=['Classification_score', 'reliability_score'], ascending=[False, False])
+                df_feature_set.to_csv(feature_set_predicted_path, index=False)
+                report_file_status(feature_set_predicted_path, "Sorted feature set predicted")
+            progress.step_success("Final result processing", time.time() - step_start)
+
+        elif args.train_mode:
+            model_name = args.model_name
+            user_train_files = args.train_mode
+            
+            # Step 4: Generate user features
+            step_start = time.time()
+            progress.update(3, "Generating user training features")
+            feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
+            user_merged_file = os.path.join(args.output_dir, f"{model_name}_user_merged_num.csv")
+            user_train_command = f"python3 {feature_script_path} --targets {','.join(user_train_files)} --params {args.params} --feature_mode default --output_dir {args.output_dir}"
+            try:
+                subprocess.run(user_train_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                progress.step_success("User feature generation", time.time() - step_start)
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Error: Feature.py execution failed for user_train_file with error: {e}")
+                sys.exit(1)
+            
+            # Step 5: Rename output file
+            step_start = time.time()
+            progress.update(2, "Finalizing user training data")
+            default_generated_file = os.path.join(args.output_dir, "all_generated_merged_num.csv")
+            if os.path.exists(default_generated_file):
+                os.rename(default_generated_file, user_merged_file)
+                # Suppressed rename message
+                progress.step_success("User train mode completion", time.time() - step_start)
+                # Suppressed completion message
+            else:
+                print(f"❌ Error: {default_generated_file} not found after Feature.py run.")
+                sys.exit(1)
+        else:
+            print("❌ Error: Either --prediction_mode or --train_mode must be provided.")
+            sys.exit(1)
+
+        # Final completion
+        progress.update(progress.total_steps - progress.current_step, "Finalizing")
+        total_time = time.time() - progress.start_time
+        progress.finish()
+        
+        print(f"\n🎊 CleaveRNA analysis completed successfully!")
+        print(f"⏱️ Total execution time: {format_time(total_time)}")
+        print(f"📊 All output files have been generated in: {args.output_dir}")
+        
+    except Exception as e:
+        progress.finish()
+        print(f"\n💥 An error occurred during processing: {str(e)}")
+        traceback.print_exc()
         sys.exit(1)
 
 def predict_with_confidence(model, X, y_true=None):
@@ -493,6 +726,10 @@ def dotbracket_to_pairs(dot_bracket):
 
 def main():
     try:
+        print("\n" + "="*60)
+        print("🧬 CleaveRNA Analysis Tool 🧬")
+        print("="*60)
+        
         parser = argparse.ArgumentParser()
         parser.add_argument('--targets', nargs='+', help="Path to one or more FASTA files (required for --prediction_mode)")
         parser.add_argument('--params', help="Path to the CSV file containing LA, RA, CS, temperature, and core")
@@ -505,55 +742,58 @@ def main():
         parser.add_argument('--ML_target', help="CSV file containing target labels for ML training (required for --prediction_mode)")
         args = parser.parse_args()
 
-        # Debugging: Print parsed arguments
-        print("Parsed arguments:", args)
+        # Show initial configuration
+        print(f"🔧 Configuration loaded:")
+        print(f"   Model name: {args.model_name}")
+        print(f"   Feature mode: {args.feature_mode}")
+        if args.prediction_mode:
+            print(f"   Mode: Prediction")
+            print(f"   Targets: {len(args.targets) if args.targets else 0} files")
+        elif args.train_mode:
+            print(f"   Mode: Training")
+            print(f"   Training files: {len(args.train_mode)} files")
+        print(f"   Output directory: {args.output_dir}")
 
         # Validate that one of the train modes is specified
         if not args.prediction_mode and not args.train_mode:
-            print("Error: Either --prediction_mode or --train_mode must be provided.")
+            print("❌ Error: Either --prediction_mode or --train_mode must be provided.")
             sys.exit(1)
 
         # Validate ML_target is provided for prediction_mode
         if args.prediction_mode and not args.ML_target:
-            print("Error: --ML_target is required when using --prediction_mode.")
+            print("❌ Error: --ML_target is required when using --prediction_mode.")
             sys.exit(1)
 
         # Validate targets is provided for prediction_mode
         if args.prediction_mode and not args.targets:
-            print("Error: --targets is required when using --prediction_mode.")
+            print("❌ Error: --targets is required when using --prediction_mode.")
             sys.exit(1)
 
         # Validate each target file in the list (only for prediction_mode)
         if args.targets:
             for target in args.targets:
                 if not os.path.exists(target):
-                    print(f"Error: Target file '{target}' does not exist.")
+                    print(f"❌ Error: Target file '{target}' does not exist.")
                     sys.exit(1)
 
         if not os.path.exists(args.params):
-            print(f"Error: Parameters file '{args.params}' does not exist.")
+            print(f"❌ Error: Parameters file '{args.params}' does not exist.")
             sys.exit(1)
 
         if args.feature_mode == 'specific_query' and args.specific_csv and not os.path.exists(args.specific_csv):
-            print(f"Error: Specific CSV file '{args.specific_csv}' does not exist.")
+            print(f"❌ Error: Specific CSV file '{args.specific_csv}' does not exist.")
             sys.exit(1)
 
-        # Debugging: Print mode-specific logic
-        print(f"Running in mode: {args.feature_mode}")
-        if args.specific_csv:
-            print(f"Using specific CSV: {args.specific_csv}")
-
         # Create parameters.cfg if it doesn't exist
-        if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "parameters.cfg")):
-            create_cfg_file(args.params)
+        cfg_path = os.path.join(args.output_dir, "parameters.cfg")
+        if not os.path.exists(cfg_path):
+            create_cfg_file(args.params, args.output_dir)
 
-        # Execute Feature processing, removing the placeholder print
+        # Execute Feature processing
         train(args)
 
-        # After all predictions and outputs are generated, plotting and annotation are skipped (removed)
-        # All code related to process_top10_rna_structures and RNA structure plotting is deleted.
     except Exception as e:
-        print("An error occurred:", str(e))
+        print(f"\n💥 An error occurred: {str(e)}")
         traceback.print_exc()
         sys.exit(1)
 
@@ -562,7 +802,7 @@ if __name__ == "__main__":
 
 # USAGE NOTE:
 # Prediction mode - uses pre-existing training data for prediction:
-#   python3 CleaveRNA.py --targets <fasta1> <fasta2> ... --params <params.csv> --feature_mode default --prediction_mode <train_prefix> --model_name <model_name> --ML_target <target.csv> --output_dir <outdir>
+#   python3 CleaveRNA.py --targets <fasta1> <fasta2> ... --params <params.csv> --feature_mode default --prediction_mode <train_csv_file> --model_name <model_name> --ML_target <target.csv> --output_dir <outdir>
 #
 # Train mode - generates training features from user FASTA files:
 #   python3 CleaveRNA.py --train_mode <train1.fasta> <train2.fasta> ... --feature_mode default --output_dir <outdir> --model_name <model_name>
