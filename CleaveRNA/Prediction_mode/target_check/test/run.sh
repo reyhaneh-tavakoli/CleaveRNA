@@ -16,7 +16,7 @@ script_path="../../../CleaveRNA.py"  # Path to CleaveRNA.py
 # Define the input files and parameters
 TARGETS="target_1.fasta target_2.fasta"  # Space-separated FASTA files
 PARAMS="test_target_check.csv"
-PREDICTION_MODE_FILE="HPBC_default_merged_num.csv"  # The actual default train CSV file
+PREDICTION_MODE_FILE="HPBC_user_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="HPBC"
 ML_TARGET="HPBC_target.csv"
 

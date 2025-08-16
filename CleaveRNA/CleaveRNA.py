@@ -210,7 +210,7 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name, progress_t
     svm.fit(X, y)
 
     # Save model
-    model_file = f"{model_name}-{feature_set_name}-SVM.pkl"
+    model_file = f"{model_name}_SVM.pkl"
     with open(model_file, 'wb') as f:
         pickle.dump({
             'model': svm,
@@ -258,7 +258,7 @@ def perform_cross_validation(X, y, model_name, feature_set_name, progress_tracke
     # Suppress cross-validation results output
 
     # Save cross-validation results to a CSV file
-    metrics_file = f"{model_name}_ML_metrics_{feature_set_name}.csv"
+    metrics_file = f"{model_name}_ML_metrics.csv"
     metrics_df = pd.DataFrame({
         'Metric': ['Accuracy', 'Precision', 'Recall', 'F1'],
         'Mean': [np.mean(scores['accuracy']), np.mean(scores['precision']), np.mean(scores['recall']), np.mean(scores['f1'])],
@@ -268,9 +268,9 @@ def perform_cross_validation(X, y, model_name, feature_set_name, progress_tracke
     
     step_duration = time.time() - step_start_time
     if progress_tracker:
-        progress_tracker.step_success(f"Cross-validation for {feature_set_name}", step_duration)
+        progress_tracker.step_success("Cross-validation", step_duration)
     
-    report_file_status(metrics_file, f"ML metrics for {feature_set_name}")
+    report_file_status(metrics_file, "ML metrics")
 
 def train(args):
     # Initialize progress tracking
@@ -348,9 +348,9 @@ def train(args):
             step_start = time.time()
             progress.update(1, "Checking result files")
             result_files = [
-                f"{model_name}_Results_with_region.csv",
-                f"{model_name}_Results_without_region.csv",
-                f"{model_name}_Results_pairwise.csv"
+                f"{model_name}_run_1.csv",
+                f"{model_name}_run_2.csv",
+                f"{model_name}_run_3.csv"
             ]
             for result_file in result_files:
                 if report_empty_file(result_file, "Result file"):
@@ -364,9 +364,9 @@ def train(args):
             # Only calculate statistics for numeric columns
             numeric_columns = df_default.select_dtypes(include=[np.number]).columns
             mean_std = df_default[numeric_columns].describe().loc[['mean', 'std']]
-            mean_std_file = f"{model_name}_default_train_statistics.csv"
+            mean_std_file = f"{model_name}_statistics.csv"
             mean_std.to_csv(mean_std_file)
-            report_file_status(mean_std_file, "Default train statistics")
+            report_file_status(mean_std_file, "Statistics")
             progress.step_success("Statistics calculation", time.time() - step_start)
 
             # Step 7: Standardize data
@@ -382,9 +382,9 @@ def train(args):
                     except (KeyError, TypeError):
                         # Skip columns that can't be standardized
                         continue
-            standardized_file = f"{model_name}_standardized_default_train.csv"
+            standardized_file = f"{model_name}_standardized_train.csv"
             df_standardized.to_csv(standardized_file, index=False)
-            report_file_status(standardized_file, "Standardized default train")
+            report_file_status(standardized_file, "Standardized train")
             progress.step_success("Data standardization", time.time() - step_start)
 
             # Step 8: Balance target data
@@ -395,9 +395,9 @@ def train(args):
             df_balanced = df_target.groupby('Y', group_keys=False).apply(
                 lambda x: x.sample(df_target['Y'].value_counts().min(), random_state=89273554)
             )
-            balanced_file = f"{model_name}_balanced_target.csv"
+            balanced_file = f"{model_name}_balanced_classification.csv"
             df_balanced.to_csv(balanced_file, index=False)
-            report_file_status(balanced_file, "Balanced target")
+            report_file_status(balanced_file, "Balanced classification")
 
             # Skip generating non-balanced target and default ML test files
             progress.step_success("Target data balancing", time.time() - step_start)
@@ -406,9 +406,9 @@ def train(args):
             step_start = time.time()
             progress.update(2, "Merging training datasets")
             df_merged_train = pd.merge(df_standardized, df_balanced, on='id2')
-            merged_train_file = f"{model_name}_default_ML_train.csv"
+            merged_train_file = f"{model_name}_ML_train.csv"
             df_merged_train.to_csv(merged_train_file, index=False)
-            report_file_status(merged_train_file, "Default ML train")
+            report_file_status(merged_train_file, "ML train")
 
             # Skip generating default ML test file
             progress.step_success("Dataset merging", time.time() - step_start)
@@ -419,15 +419,15 @@ def train(args):
             feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
             df_train = pd.read_csv(merged_train_file)
             feature_set_with_y = feature_set + ['Y']
-            feature_set_file = f"{model_name}_default_ML_train_feature_set.csv"
+            feature_set_file = f"{model_name}_ML_train_feature_set.csv"
             df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
-            report_file_status(feature_set_file, "Default ML train feature set")
+            report_file_status(feature_set_file, "ML train feature set")
             progress.step_success("Feature set preparation", time.time() - step_start)
 
             # Step 11: Standardize generated data
             step_start = time.time()
             progress.update(2, "Standardizing generated data")
-            mean_std_file = f"{model_name}_default_train_statistics.csv"
+            mean_std_file = f"{model_name}_statistics.csv"
             mean_std = pd.read_csv(mean_std_file, index_col=0)
             df_generated = pd.read_csv("all_generated_merged_num.csv")
             df_standardized_generated = df_generated.copy()
@@ -465,15 +465,33 @@ def train(args):
             progress.step_success("Generated data standardization", time.time() - step_start)
 
             # Step 12-17: Train SVM model (progress handled within function)
-            train_and_save_svm(f"{model_name}_default_ML_train_feature_set.csv", model_name, "default_train_feature_set", progress)
+            train_and_save_svm(f"{model_name}_ML_train_feature_set.csv", model_name, "default_train_feature_set", progress)
 
-            # Step 18: Make predictions
+            # Step 18: Create CS_info file first (moved from step 20)
+            step_start = time.time()
+            progress.update(1, "Creating CS_info file")
+            df_all_generated = pd.read_csv("all_generated_merged_num.csv")
+            cs_dz_file = "CS_info.csv"
+            if 'target_file' in df_all_generated.columns:
+                df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
+            else:
+                fasta_targets = args.targets if isinstance(args.targets, list) else args.targets.split(',')
+                df_all_generated['target_file'] = None
+                if len(fasta_targets) == len(df_all_generated):
+                    df_all_generated['target_file'] = fasta_targets
+                else:
+                    df_all_generated['target_file'] = fasta_targets[0] if fasta_targets else None
+                df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
+            report_file_status(cs_dz_file, "CS_info file")
+            progress.step_success("CS_info file creation", time.time() - step_start)
+
+            # Step 19: Make predictions
             step_start = time.time()
             progress.update(2, "Making predictions")
             # Suppressed prediction processing message
-            pickle_file = f"{model_name}-default_train_feature_set-SVM.pkl"
+            pickle_file = f"{model_name}_SVM.pkl"
             test_file = "generated_ML_test_feature_set.csv"
-            output_file = f"{model_name}_feature_set_predicted.csv"
+            output_file = f"{model_name}_CleaveRNA_output.csv"
             model_file = os.path.join(args.output_dir, pickle_file)
             output_path = os.path.join(args.output_dir, output_file)
             
@@ -512,8 +530,30 @@ def train(args):
                         margin = np.abs(decision_score)
                         combined_score = reliability_score * margin
                         
+                        # Read CS_info.csv to get id2, seq2, target_file mappings
+                        cs_info_path = os.path.join(args.output_dir, "CS_info.csv")
+                        if os.path.exists(cs_info_path):
+                            df_cs_info = pd.read_csv(cs_info_path)
+                            # Create mapping dictionaries
+                            if len(df_cs_info) == len(df_test):
+                                id2_mapping = df_cs_info['id2'].astype(str).tolist()
+                                seq2_mapping = df_cs_info['seq2'].tolist() if 'seq2' in df_cs_info.columns else [None] * len(df_cs_info)
+                                target_mapping = df_cs_info['target_file'].tolist() if 'target_file' in df_cs_info.columns else [None] * len(df_cs_info)
+                            else:
+                                # Fallback to original method if lengths don't match
+                                id2_mapping = df_test['id2'].tolist() if 'id2' in df_test.columns else list(range(len(df_test)))
+                                seq2_mapping = [None] * len(df_test)
+                                target_mapping = [None] * len(df_test)
+                        else:
+                            # Fallback if CS_info.csv doesn't exist
+                            id2_mapping = df_test['id2'].tolist() if 'id2' in df_test.columns else list(range(len(df_test)))
+                            seq2_mapping = [None] * len(df_test)
+                            target_mapping = [None] * len(df_test)
+                        
                         result_df = pd.DataFrame({
-                            'id2': df_test['id2'] if 'id2' in df_test.columns else range(len(df_test)),
+                            'id2': id2_mapping,
+                            'seq2': seq2_mapping,
+                            'target_file': target_mapping,
                             'Classification_score': Classification_score,
                             'reliability_score': reliability_score,
                             'predict_proba': predict_proba,
@@ -521,93 +561,48 @@ def train(args):
                             'margin': margin,
                             'combined_score': combined_score
                         })
-                        
-                        all_gen = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
-                        id2_to_target = dict(zip(all_gen['id2'], all_gen['target_file'])) if 'target_file' in all_gen.columns else {}
-                        result_df.insert(1, 'target_file', result_df['id2'].map(id2_to_target) if id2_to_target else None)
                         result_df.to_csv(output_path, index=False)
                         # Suppress success message
             
             progress.step_success("Predictions", time.time() - step_start)
 
-            # Step 19: Process CS_Dz mapping - Extract id2, seq2, and target_file from CS_Dz file
+            # Step 20: Process CS_info mapping (simplified since we already used CS_info.csv)
             step_start = time.time()
-            progress.update(1, "Processing CS_Dz mapping")
-            cs_dz_path = os.path.join(args.output_dir, "CS_Dz.csv")
-            if os.path.exists(cs_dz_path) and os.path.exists(output_path):
-                df_cs_dz = pd.read_csv(cs_dz_path)
-                result_df = pd.read_csv(output_path)
-                if len(result_df) == len(df_cs_dz):
-                    # Extract id2, seq2, and target_file from CS_Dz file and override in predicted results
-                    result_df['id2'] = df_cs_dz['id2'].astype(str).values
-                    if 'seq2' in df_cs_dz.columns:
-                        result_df['seq2'] = df_cs_dz['seq2'].values
-                    if 'target_file' in df_cs_dz.columns:
-                        result_df['target_file'] = df_cs_dz['target_file'].values
-                    
-                    # Reorder columns to put id2, seq2, target_file at the beginning
-                    cols = list(result_df.columns)
-                    priority_cols = ['id2', 'seq2', 'target_file']
-                    ordered_cols = []
-                    
-                    # Add priority columns first (if they exist)
-                    for col in priority_cols:
-                        if col in cols:
-                            ordered_cols.append(col)
-                            cols.remove(col)
-                    
-                    # Add remaining columns
-                    ordered_cols.extend(cols)
-                    result_df = result_df[ordered_cols]
-                    result_df.to_csv(output_path, index=False)
-                    print(f"✅ Updated predicted file with id2, seq2, and target_file from CS_Dz.csv")
-                else:
-                    print(f"⚠️ Warning: Row count mismatch between predicted results ({len(result_df)}) and CS_Dz file ({len(df_cs_dz)})")
-            else:
-                if not os.path.exists(cs_dz_path):
-                    print(f"⚠️ Warning: CS_Dz.csv not found at {cs_dz_path}")
-                if not os.path.exists(output_path):
-                    print(f"⚠️ Warning: Predicted output file not found at {output_path}")
-            progress.step_success("CS_Dz mapping", time.time() - step_start)
-
-            # Step 20: Save CS_Dz file
-            step_start = time.time()
-            progress.update(1, "Saving CS_Dz file")
-            df_all_generated = pd.read_csv("all_generated_merged_num.csv")
-            cs_dz_file = "CS_Dz.csv"
-            if 'target_file' in df_all_generated.columns:
-                df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
-            else:
-                fasta_targets = args.targets if isinstance(args.targets, list) else args.targets.split(',')
-                df_all_generated['target_file'] = None
-                if len(fasta_targets) == len(df_all_generated):
-                    df_all_generated['target_file'] = fasta_targets
-                else:
-                    df_all_generated['target_file'] = fasta_targets[0] if fasta_targets else None
-                df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
-            report_file_status(cs_dz_file, "CS_Dz file")
-            progress.step_success("CS_Dz file creation", time.time() - step_start)
+            progress.update(1, "Processing CS_info mapping")
+            # This step is now simplified since we already extracted the data from CS_info.csv in predictions
+            progress.step_success("CS_info mapping", time.time() - step_start)
 
             # Step 21: Final processing
             step_start = time.time()
             progress.update(2, "Final result processing")
-            cs_dz_file_path = os.path.join(args.output_dir, cs_dz_file)
-            feature_set_predicted_path = os.path.join(args.output_dir, f"{model_name}_feature_set_predicted.csv")
-            if os.path.exists(cs_dz_file_path) and os.path.exists(feature_set_predicted_path):
-                df_cs_dz = pd.read_csv(cs_dz_file_path)
+            feature_set_predicted_path = os.path.join(args.output_dir, f"{model_name}_CleaveRNA_output.csv")
+            if os.path.exists(feature_set_predicted_path):
                 df_feature_set = pd.read_csv(feature_set_predicted_path)
-                keep_cols = [col for col in ['id2', 'seq2', 'target_file', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_feature_set.columns]
+                
+                # Rename columns first
+                column_rename_map = {
+                    'id2': 'CS_Index',
+                    'seq2': 'Dz_Seq',
+                    'target_file': 'CS_Target_File'
+                }
+                df_feature_set = df_feature_set.rename(columns=column_rename_map)
+                
+                # Update keep_cols to use new column names
+                keep_cols = [col for col in ['CS_Index', 'Dz_Seq', 'CS_Target_File', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_feature_set.columns]
                 df_feature_set = df_feature_set[keep_cols]
-                cols_to_remove = [col for col in df_feature_set.columns if col in ['id2.1', 'seq2.1', 'target_file.1'] or col.startswith('id2.') or col.startswith('seq2.') or col.startswith('target_file.')]
+                
+                # Remove any duplicate columns
+                cols_to_remove = [col for col in df_feature_set.columns if col in ['CS_Index.1', 'Dz_Seq.1', 'CS_Target_File.1'] or col.startswith('CS_Index.') or col.startswith('Dz_Seq.') or col.startswith('CS_Target_File.')]
                 if cols_to_remove:
                     df_feature_set = df_feature_set.drop(columns=cols_to_remove)
+                
                 df_feature_set.to_csv(feature_set_predicted_path, index=False)
-                report_file_status(feature_set_predicted_path, "Updated feature set predicted")
+                report_file_status(feature_set_predicted_path, "Updated CleaveRNA output")
                 
                 df_feature_set = pd.read_csv(feature_set_predicted_path)
                 df_feature_set = df_feature_set.sort_values(by=['Classification_score', 'reliability_score'], ascending=[False, False])
                 df_feature_set.to_csv(feature_set_predicted_path, index=False)
-                report_file_status(feature_set_predicted_path, "Sorted feature set predicted")
+                report_file_status(feature_set_predicted_path, "Sorted CleaveRNA output")
             progress.step_success("Final result processing", time.time() - step_start)
 
         elif args.train_mode:
@@ -643,6 +638,127 @@ def train(args):
             print("❌ Error: Either --prediction_mode or --train_mode must be provided.")
             sys.exit(1)
 
+        # Cleanup intermediate files
+        step_start = time.time()
+        print("\n🧹 Cleaning up intermediate files...")
+        model_name = args.model_name
+        
+        # Files to keep (essential outputs)
+        keep_files = {
+            f"{model_name}_ML_metrics.csv",
+            f"{model_name}_CleaveRNA_output.csv", 
+            f"{model_name}_ML_train.csv",
+            "parameters.cfg"
+        }
+        
+        # Input files to protect (never remove these)
+        protected_input_files = set()
+        
+        # Protect user-provided files
+        if args.params:
+            protected_input_files.add(os.path.basename(args.params))
+        if args.ML_target:
+            protected_input_files.add(os.path.basename(args.ML_target))
+        if args.specific_csv:
+            protected_input_files.add(os.path.basename(args.specific_csv))
+        if args.prediction_mode:
+            protected_input_files.add(os.path.basename(args.prediction_mode))
+        
+        # Protect FASTA input files
+        if args.targets:
+            for target in args.targets:
+                protected_input_files.add(os.path.basename(target))
+        if args.train_mode:
+            for train_file in args.train_mode:
+                protected_input_files.add(os.path.basename(train_file))
+        
+        # List of all potential intermediate files to remove
+        cleanup_files = [
+            "all_generated_merged_num.csv",
+            "standardized_all_generated_merged_num.csv",
+            "generated_ML_test_feature_set.csv",
+            "CS_info.csv",
+            f"{model_name}_statistics.csv",
+            f"{model_name}_standardized_train.csv",
+            f"{model_name}_balanced_classification.csv",
+            f"{model_name}_ML_train_feature_set.csv",
+            f"{model_name}_SVM.pkl",
+            f"{model_name}_user_merged_num.csv",
+            f"{model_name}_Results_with_region.csv",
+            f"{model_name}_Results_without_region.csv",
+            f"{model_name}_Results_pairwise.csv"
+        ]
+        
+        # Remove files that exist and are not in keep_files
+        removed_count = 0
+        
+        # First, remove files from the static cleanup list
+        for file_to_remove in cleanup_files:
+            file_path = os.path.join(args.output_dir, file_to_remove)
+            file_name = os.path.basename(file_to_remove)
+            if (os.path.exists(file_path) and 
+                file_to_remove not in keep_files and 
+                file_name not in protected_input_files):
+                try:
+                    os.remove(file_path)
+                    removed_count += 1
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not remove {file_to_remove}: {e}")
+        
+        # Then, scan directory for target-specific Result files
+        import glob
+        result_patterns = [
+            "*_Results_with_region.csv",
+            "*_Results_without_region.csv", 
+            "*_Results_pairwise.csv"
+        ]
+        
+        for pattern in result_patterns:
+            pattern_path = os.path.join(args.output_dir, pattern)
+            matching_files = glob.glob(pattern_path)
+            for file_path in matching_files:
+                file_name = os.path.basename(file_path)
+                if (file_name not in keep_files and 
+                    file_name not in protected_input_files):
+                    try:
+                        os.remove(file_path)
+                        removed_count += 1
+                    except Exception as e:
+                        print(f"⚠️ Warning: Could not remove {file_name}: {e}")
+        
+        # Clean up generated_merged_num.csv files
+        generated_merged_pattern = "generated_merged_num.csv"
+        generated_merged_files = glob.glob(generated_merged_pattern)
+        for file_path in generated_merged_files:
+            file_name = os.path.basename(file_path)
+            if (os.path.isfile(file_path) and 
+                file_name not in protected_input_files):
+                try:
+                    os.remove(file_path)
+                    removed_count += 1
+                    print(f"📄 Removed generated merged file: {file_path}")
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not remove file {file_path}: {e}")
+        
+        # Finally, clean up RNAplfold output directories
+        import shutil
+        rnaplfold_pattern = "rnaplfold_output_*"
+        rnaplfold_dirs = glob.glob(rnaplfold_pattern)
+        for dir_path in rnaplfold_dirs:
+            if os.path.isdir(dir_path):
+                try:
+                    shutil.rmtree(dir_path)
+                    removed_count += 1
+                    print(f"🗂️ Removed RNAplfold directory: {dir_path}")
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not remove directory {dir_path}: {e}")
+        
+        cleanup_duration = time.time() - step_start
+        if removed_count > 0:
+            print(f"✅ Cleaned up {removed_count} intermediate files in {cleanup_duration:.2f}s")
+        else:
+            print(f"✅ No intermediate files to clean up")
+
         # Final completion
         progress.update(progress.total_steps - progress.current_step, "Finalizing")
         total_time = time.time() - progress.start_time
@@ -650,7 +766,8 @@ def train(args):
         
         print(f"\n🎊 CleaveRNA analysis completed successfully!")
         print(f"⏱️ Total execution time: {format_time(total_time)}")
-        print(f"📊 All output files have been generated in: {args.output_dir}")
+        print(f"📊 Final output files available in: {args.output_dir}")
+        print(f"📋 Kept files: {', '.join(sorted(keep_files))}")
         
     except Exception as e:
         progress.finish()
