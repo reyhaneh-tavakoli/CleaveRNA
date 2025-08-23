@@ -34,10 +34,19 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
 #### Steps:
 
 1. **Prepare the target sequence files in FASTA format**  
-   - Example test file: Example test files: [`BCL_1.fasta`, `BCL_2.fasta`, `BCL_3.fasta`, `BCL_4.fasta`, `BCL_5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC) 
-   - **Note**:  
-     - The minimum sequence length must be **150 nt**.  
-     - The sequence name must match the FASTA file name.  
+- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)  
+- **Note**:  
+  - The minimum sequence length must be **150 nt**.  
+  - The sequence name must match the FASTA file name. For example, if the target file is [`BCL_1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
+
+    ```bash
+    >BCL-1
+    GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
+    ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
+    CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
+    ...
+    ```
+
        - Example: The file `BCL_1.fasta` must start with `>BCL_1`.  
 
 2. **Prepare the parameter file**  
@@ -55,7 +64,7 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
    - In the input files directory, run the tool with:  
 
      ```bash
-     bash run
+     bash run.sh
      ```
 
 ---
@@ -66,8 +75,19 @@ The tool will generate the **pre_train file**:
 [HPBC_user_merged_num.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/HPBC_user_merged_num.csv)  
 
 - In this file, you can find the generated DNAzymes (`seq_2` column) based on your defined parameters.  
-- All dinucleotide cleavage sites (`id2` column) are included, along with the generated feature sets for each cleavage site.  
+- All dinucleotide cleavage sites (`id2` column) are included, along with the generated feature sets for each cleavage site.
+  
+**Note:**  
+Two different **pre_train** files are provided, generated from the largest fraction cleavage dataset published prior to the development of this tool.  
 
+If you have your own dataset (or a newly published one), please:  
+1. Create a new folder and name it according to your `model_name`.  
+2. Prepare all the required input files as described above.  
+3. Update the `run.sh` script and run it. 
+
+---
+
+### Prediction Mode
 
 
 
