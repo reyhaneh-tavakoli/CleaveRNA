@@ -16,6 +16,26 @@ The following tools need to be present in the environment, e.g. via a respective
 
 ## Usage and parameters
 
+The **CleaveRNA** algorithm provides two different modes: **training** and **prediction**.
+
+- **Training Mode**: You can create a training file using your own experimental data. If you have experimental data on the fraction of DNAzyme cleavage at different target sites, you can use this mode to generate a custom training file for prediction.  
+- **Prediction Mode**: Using either your own training file or the provided default ones, you can score cleavage sites on target sequences and select the most suitable DNAzyme based on your specific purpose.
+
+If you don’t have experimental data, you can use the **default training files** we provide. These were generated from experimental data published prior to the development of this algorithm.
+
+---
+
+## Training Mode
+
+In this section, you will learn how the default training files were generated and how you can create your own training set for use in prediction mode.
+If you have your own dataset as described in detail in "data_preparation" folder, you must first run this mode to obtain the pre_train file. Lets start it: 
+As input file you need to prepare the sequence of target files with FASTA format. you can use the test file here:  
+
+
+
+
+
+
 ### Default mode 
 If you just want to start and are fine with the default parameters set, you have to provide the target sequences (using `--targets`), the parameter file for feature generation (using `--param`), the default pre-train and the target variable files (using `--default_train_file` to give the prefix of files as model-name). 
 ```[bash]
