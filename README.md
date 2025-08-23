@@ -14,22 +14,61 @@ The following tools need to be present in the environment, e.g. via a respective
 - IntaRNA (intarna)
 - RNAplfold (viennarna)
 
-## Usage and parameters
+## Usage and Parameters
 
 The **CleaveRNA** algorithm provides two different modes: **training** and **prediction**.
 
-- **Training Mode**: You can create a training file using your own experimental data. If you have experimental data on the fraction of DNAzyme cleavage at different target sites, you can use this mode to generate a custom training file for prediction.  
-- **Prediction Mode**: Using either your own training file or the provided default ones, you can score cleavage sites on target sequences and select the most suitable DNAzyme based on your specific purpose.
+- **Training Mode**: Allows you to create a training file using your own experimental data. If you have experimental data on the fraction of DNAzyme cleavage at different target sites, you can use this mode to generate a custom training file for prediction.  
+- **Prediction Mode**: Using either your own training file or the provided default ones, you can score cleavage sites on target sequences and select the most suitable DNAzyme based on your specific needs.
 
 If you don’t have experimental data, you can use the **default training files** we provide. These were generated from experimental data published prior to the development of this algorithm.
 
 ---
 
-## Training Mode
+### Training Mode
 
-In this section, you will learn how the default training files were generated and how you can create your own training set for use in prediction mode.
-If you have your own dataset as described in detail in "data_preparation" folder, you must first run this mode to obtain the pre_train file. Lets start it: 
-As input file you need to prepare the sequence of target files with FASTA format. you can use the test file here:  
+This section explains how the default training files were generated and how you can create your own training set for use in prediction mode.
+
+If you have your own dataset (see details in the **`data_preparation`** folder), you must first run this mode to obtain the **pre_train** file.  
+
+#### Steps:
+
+1. **Prepare the target sequence files in FASTA format**  
+   - Example test file: Example test files: [`BCL_1.fasta`, `BCL_2.fasta`, `BCL_3.fasta`, `BCL_4.fasta`, `BCL_5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC) 
+   - **Note**:  
+     - The minimum sequence length must be **150 nt**.  
+     - The sequence name must match the FASTA file name.  
+       - Example: The file `BCL_1.fasta` must start with `>BCL_1`.  
+
+2. **Prepare the parameter file**  
+   - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
+   - This file contains **five columns**, which are defined below:  
+     - **LA**: Left binding arm length of the DNAzyme.  
+     - **RA**: Right binding arm length of the DNAzyme.  
+     - **CS**: The cleavage site dinucleotide of the DNAzyme. In this example, the catalytic core of the **10-23 DNAzyme** is used. [Reference: Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157)  
+     - **Tem**: Reaction temperature of the DNAzyme.  
+     - **CA**: Catalytic core sequence of the DNAzyme.  
+
+3. **Run the shell script**  
+   - Script: [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/run)  
+   - Update **lines 3–12** according to your conda environment.  
+   - In the input files directory, run the tool with:  
+
+     ```bash
+     bash run
+     ```
+
+---
+
+### Output
+
+The tool will generate the **pre_train file**:  
+[HPBC_user_merged_num.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/HPBC_user_merged_num.csv)  
+
+- In this file, you can find the generated DNAzymes (`seq_2` column) based on your defined parameters.  
+- All dinucleotide cleavage sites (`id2` column) are included, along with the generated feature sets for each cleavage site.  
+
+
 
 
 
