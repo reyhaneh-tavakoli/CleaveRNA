@@ -29,46 +29,60 @@ If you don’t have experimental data, you can use the **default training files*
 
 This section explains how the default training files were generated and how you can create your own training set for use in prediction mode.
 
-If you have your own dataset (see details in the **`data_preparation`** folder), you must first run this mode to obtain the **pre_train** file.  
+If you have your own dataset (see details in the **`data_preparation`** folder), you must first run this mode to generate the **pre_train** file.
 
-#### Steps:
+#### Steps
+
+#### Steps
 
 1. **Prepare the target sequence files in FASTA format**  
-- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)  
-- **Note**:  
-  - The minimum sequence length must be **150 nt**.  
-  - The sequence name must match the FASTA file name. For example, if the target file is [`BCL_1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
+   - Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)  
+   - **Notes:**  
+     - The minimum sequence length must be **150 nt**.  
+     - The sequence name must match the FASTA file name.  
 
-    ```bash
-    >BCL-1
-    GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
-    ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
-    CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
-    ...
-    ```
+       **Example:** If the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
 
-       - Example: The file `BCL_1.fasta` must start with `>BCL_1`.  
-
-2. **Prepare the parameter file**  
+       ```fasta
+       >BCL-1
+       GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
+       ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
+       CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
+       ...
+       ```
+       The target files must be provided with the `--targets` flag:  
+       ```bash
+       --targets
+       ```
+       - Example: The file `BCL-1.fasta` must start with `>BCL-1`.  
+2. **Prepare the parameter file (default mode)**  
    - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
-   - This file contains **five columns**, which are defined below:  
-     - **LA**: Left binding arm length of the DNAzyme.  
-     - **RA**: Right binding arm length of the DNAzyme.  
-     - **CS**: The cleavage site dinucleotide of the DNAzyme. In this example, the catalytic core of the **10-23 DNAzyme** is used. [Reference: Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157)  
-     - **Tem**: Reaction temperature of the DNAzyme.  
-     - **CA**: Catalytic core sequence of the DNAzyme.  
-
-3. **Run the shell script**  
+   - This file contains **five columns**, described below:  
+     - **LA**: Left binding arm length of the DNAzyme  
+     - **RA**: Right binding arm length of the DNAzyme  
+     - **CS**: Cleavage site dinucleotide of the DNAzyme. In this example, the catalytic core of the **10-23 DNAzyme** is used ([Reference: Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157))  
+     - **Tem**: Reaction temperature of the DNAzyme  
+     - **CA**: Catalytic core sequence of the DNAzyme  
+   - Provide the default mode and parameter file with:  
+     ```bash
+     --feature_mode default --params test_default.csv
+     ```
+3. **Define the output directory**  
+   ```bash
+   --output_dir
+4. **Specify the model name**  
+   - Provide the model name using the `--model_name` flag:  
+     ```bash
+     --model_name "HPBC"
+     ```
+5. **Run the shell script**  
    - Script: [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/run)  
-   - Update **lines 3–12** according to your conda environment.  
+   - Update **lines 3–12** to match your conda environment.  
    - In the input files directory, run the tool with:  
-
      ```bash
      bash run.sh
      ```
-
----
-
+    
 ### Output
 
 The tool will generate the **pre_train file**:  
@@ -88,7 +102,31 @@ If you have your own dataset (or a newly published one), please:
 ---
 
 ### Prediction Mode
+In this mode you can use the generated pre_train file to scoring the cleavage sites on your target files based on the maching learning prediction. 
+for this mode the input files are: 
+1. The sequence fasra files that you want consider as target for DNAzyme.
+- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/default/HPBC)  
+- **Note**:  
+  - The minimum sequence length must be **150 nt**.  
+  - The sequence name must match the FASTA file name. For example, if the target file is [`BCL_1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/BCL-1.fasta), the header must start with:  
 
+    ```bash
+    >BCL-1
+    GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
+    ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
+    CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
+    ...
+    ```
+  2. The parmeter files, in this example the default parameter mode 
+   - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
+   - This file contains **five columns**, which are defined below:  
+     - **LA**: Left binding arm length of the DNAzyme.  
+     - **RA**: Right binding arm length of the DNAzyme.  
+     - **CS**: The cleavage site dinucleotide of the DNAzyme. In this example, the catalytic core of the **10-23 DNAzyme** is used. [Reference: Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157)  
+     - **Tem**: Reaction temperature of the DNAzyme.  
+     - **CA**: Catalytic core sequence of the DNAzyme.  
+
+   
 
 
 
