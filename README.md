@@ -104,158 +104,116 @@ If you have your own dataset (or a newly published one), please:
 
 ---
 
-### Prediction Mode
-In this mode you can use the generated pre_train file to scoring the cleavage sites on your target files based on the maching learning prediction. 
-for this mode the input files are: 
-1. The sequence fasra files that you want consider as target for DNAzyme.
-- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/default/HPBC)  
-- **Note**:  
-  - The minimum sequence length must be **150 nt**.  
-  - The sequence name must match the FASTA file name. For example, if the target file is [`BCL_1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/BCL-1.fasta), the header must start with:  
+### Prediction Mode (Default)
 
-    ```bash
-    >BCL-1
-    GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
-    ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
-    CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
-    ...
-    ```
-  2. The parmeter files, in this example the default parameter mode 
+In this mode, you can use the generated **pre_train file** to score the cleavage sites on your target files based on machine learning predictions. First, the DNAzyme sequences are designed according to the given parameters, and then all cleavage site positions are classified and scored based on the AI predictions.
+
+The required input files are:  
+
+1. **Target sequence FASTA files**  
+   These are the sequences you want to consider as targets for DNAzyme.  
+   - Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/default/HPBC)  
+   - **Notes**:  
+     - The minimum sequence length must be **150 nt**.  
+     - The sequence name must match the FASTA file name. For example, if the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/BCL-1.fasta), the header must start with:  
+
+       ```bash
+       >BCL-1
+       GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
+       ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
+       CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
+       ...
+       ```
+
+2. **Parameter file**  
+   In this example, the default parameter mode is used.  
    - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
-   - This file contains **five columns**, which are defined before and it must upload as input by this command:
- 
-    ```bash
-    --feature_mode default --params test_default.csv
-    ```
- 3. Upload the pre_train file 
-  - Example test files: [`HPBC_user_merged_num.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_user_merged_num.csv)
-    
- - **Note**:  
-  - The pre_train file is the file that you generated in train_mode or you can use the generated default pre_train file.
-  - This file uploaded by this command:
-    
-    ```bash
-    --prediction_mode HPBC_user_merged_num.csv
-    ```
-  4. Select the model name as the prefix of all generated output files.
+   - This file contains **five columns** (defined previously) and must be uploaded with the following command:  
 
-  - The model name can be given by this command:
-    
-    ```bash
-    ----model_name HPBC
-    ```
-  5. Upload the classification score of pre_train file
-  - Example test files: [`HPBC_target.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_target.csv)
-  - this file contain two columns: the **id2** that reflected the clevage site index and the **Y** column that reflected the classification score of that position based on the exprimental data.  
-    
- - **Note**:  
-  - This file must be prepared by user or you can use the related file for our default train_files
-  - If you use your own data set, the fraction clevage of each clevage site can be converted to the binary classification as we described it in **`data_preparation`** folder 
-  - This file uploaded by this command:
-    
-    ```bash
-    ----ML_target HPBC_target.csv
-    ```
-    
-  6. **Define the output directory**
-     
-      ```bash
-      --output_dir
-      ```
+     ```bash
+     --feature_mode default --params test_default.csv
+     ```
+
+3. **Pre_train file**  
+   - Example: [`HPBC_user_merged_num.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_user_merged_num.csv)  
+   - **Notes**:  
+     - The pre_train file is either generated during `train_mode` or you can use the default provided file.  
+     - Upload this file using:  
+
+       ```bash
+       --prediction_mode HPBC_user_merged_num.csv
+       ```
+
+4. **Model name**  
+   Select the model name, which will be used as the prefix for all generated output files.  
+   - Specify it with:  
+
+     ```bash
+     ----model_name HPBC
+     ```
+
+5. **Classification score file**  
+   - Example: [`HPBC_target.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_target.csv)  
+   - This file contains **two columns**:  
+     - **id2** → Cleavage site index  
+     - **Y** → Classification score of that position based on experimental data  
+   - **Notes**:  
+     - This file must be prepared by the user or you can use the corresponding file from the default training set.  
+     - If using your own dataset, the fraction cleavage of each site can be converted to binary classification as described in the **`data_preparation`** folder.  
+     - Upload this file with:  
+
+       ```bash
+       ----ML_target HPBC_target.csv
+       ```
+
+6. **Define the output directory**  
+
+   ```bash
+   --output_dir
+   ```
       
-  7. **Run the shell script**
-   
+7. **Run the shell script**
+
    - Script: [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/run.sh)  
-   - Update **lines 3–14** to match your conda environment.  
-   - In the input files directory, run the tool with:
-     
+   - Update **lines 3–14** in the script to match your conda environment.  
+   - From the input files directory, run the tool using:  
+
      ```bash
      bash run.sh
      ```
-    
+
 ### Output
 
-The tool will generate these output files:
-**The efficiency of the machine learning model**:  
-[HPBC_ML_metrics.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv)  
+The tool will generate the following output files:
 
-- In this file, you can find all the machine learning scores that are related to the prediction.
+1. **Model performance metrics**  
+   - Example: [`HPBC_ML_metrics.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv)  
+   - Contains all machine learning scores related to the prediction.  
 
-**The prediction file**:  
-[HPBC_CleaveRNA_output.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_CleaveRNA_output.csv)  
+2. **Prediction file**  
+   - Example: [`HPBC_CleaveRNA_output.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_CleaveRNA_output.csv)  
+   - This file reports candidate cleavage sites scored by their accessibility for DNAzyme cleavage reactions.  
 
-- THis is the prediction file which scoring candidate clevage sites based on the accessibility for clevage reaction of DNAzyme.
-- contain these columns:
-  -**CS_Index** : The nucleotide index of cleavage site on the target sequence.
-  -**Dz_Seq** : The sequence of  designed DNAzyme for each related cleavage site.
-  -**CS_Target_File** : THe related target_file name for each clevage site
-  -**Classification_score** : binary classification of the clevage sites based on the machine learning prediction
-  -**Classification_score**: The score that reflected the accuracy of prediction in each position
-  -
+   **Columns included:**  
+   - **CS_Index** → Nucleotide index of the cleavage site on the target sequence  
+   - **Dz_Seq** → DNAzyme sequence designed for each cleavage site  
+   - **CS_Target_File** → Target file name associated with each cleavage site  
+   - **Classification_score** → Binary classification of the cleavage sites based on ML prediction  
+   - **Prediction_score** → Score reflecting the accuracy of prediction at each position  
+   - **Decision_score** → Model decision score.
+     
+ ---
+ ### Prediction Mode (Default)
+     
 
       
-      
 
 
-### Default mode 
-If you just want to start and are fine with the default parameters set, you have to provide the target sequences (using `--targets`), the parameter file for feature generation (using `--param`), the default pre-train and the target variable files (using `--default_train_file` to give the prefix of files as model-name). 
-```[bash]
-python3 CleaveRNA.py --targets target.fasta --params test_default.csv --feature_mode default --default_train_file HPBC
-```
-- The target sequence in FASTA format:
-```[bash]
->SARS_CoV_2_ORF1ab
-TCAAGGGTACACACCACTGGTTGTTACTCACAATTTTGACTTCACTTTTAGTTTTAGTCCAGAGTACTCAATGGTCTTTGTTCTTTTTTTTGTATGAAAATGCCTTTTTACCTTTTGCTATGGGTATTATTGCTATGTCTGCTTTTGCAATGATGTTTGTCAAACATAAGCATGCATTTCTCTGTTTGTTTTTGTTACCTTCTCTTGCCACTGTAGCTTATTTTAATATGGTCTATATGCCTGCTAGTTGGGTGATGCGTATTATGACATGGTTGGATATGGTTGATACTAGTTTGTCTGGTTTTAAGCTAAAAGACTGTGTTATGTATGCATCAGCTGTAGTGTTACTAATCCTTATGACAGCAAGAACTGTGTATGATGATGGTGCTAGGAGAGTGTGGACACTTATGAATGTCTTGACACTCGTTTATAAAGTTTATTATGGTAATGCTTTAGATCAAGCCATTTCCATGTGGGCTCTTATAATCTC
-```
-#### Note: The minimum length of this file must be 150 nt. 
 
-- The CleaveRNA tool contains two main modules that users can select based on the purpose of evaluation. These modules are related to both feature file and train file generation. 
-
-- Feature generation contains four modes: default, target_screen, target_check and specific_query.
-
-     - **Default mode**: In this mode, first the DNAzyme sequences are designed based on the given parameters then the feature table is generated 
-       for all the candidate cleavage sites on the target.
        
-       - You need to provide the parameter file in CSV format and using this command line option
-       ```[bash]
-       --feature_mode default --params test_default.csv
-       ```
-       - Example of parameter file:
-       - We provide two different types of parameter files that are related to the SARS-CoV-2 and HPV-BCL models, respectively. You can use these 
-       default parameters fileS or provide one parameter file as described in the example. 
-
-       #### 📊 Data Table (Formatted View)
-
-       | LA | RA | CS     | Tem         | CA                |
-       |----|----|--------|-------------|-------------------|
-       | 10 | 15 | AC,GC  | 37          | ggcuagcuacaacga   |
-       ---
-       
-       - Column Definitions:
-         - **LA**: Left binding arm length of the DNAzyme.
-         - **RA**: Right binding arm length of the DNAzyme.
-         - **CS**: The cleavage sites dinucleotide of DNAzyme. In this example the catalytic core of 10-23 DNAzyme is given.[Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157)
-         - **Tem**: Temperature of the DNAzyme reaction.
-         - **CA**: Catalytic core sequence of the DNAzyme.
-
       
-       - If you want to select the SARS-CoV-2 model , just save it in CSV format.
-          (using `--feature_mode default --params SARS_default.csv` )
-         
-       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
-       ```csv
-       LA,RA,CS,Tem,CA
-       9,8,"AU,GU,AC,GC",37,ggcuagcuacaacga
-       ```
-        - This parameters extracted based on the related articles: [Nature Chem 2021](https://doi.org/10.1038/s41557-021-00645-x), [Chemistry Europe 2023](https://doi.org/10.1002/chem.202300075)
-       #### 📎 Copyable SARS-CoV-2 (SARS) default parameter file
-       ```csv
-       LA,RA,CS,Tem,CA
-       16,7,"AU,GU",23,ggcuagcuacaacga
-       ```
-       - This parameters extracted based on the related article: [NAR. 2023](https://doi.org/10.1002/chem.202300075)
-         
-     - **Target_screen mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites 
+     - **Target_screen mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites index that you provided.
+     
        index that given, and then the feature table is generated for that region.
  
        - You need to provide the parameter file in CSV format and using this command line option
