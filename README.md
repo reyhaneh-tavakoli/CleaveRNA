@@ -64,6 +64,7 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
    - Provide the default mode and parameter file with:  
      ```bash
      --feature_mode default --params test_default.csv
+     
      ```
 3. **Define the output directory**  
       ```bash
@@ -230,81 +231,18 @@ You can see an example of this file here: [`test_target_screen.csv`](https://git
  
 ### Prediction Mode (Specific_query)
 
-- In this mode, prediction and scoring of candidate cleavage sites are performed only for a specific region of the target sequence.  
-- The parameter file in **target_check** mode contains an additional column called **Start_End_Index**, which defines the desired region within the target sequence.  
-- Example file: [test_target_check.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/test_target_check.csv)  
-- To run the prediction in **target_check** mode, update the [run.sh](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/run.sh) script (lines 3–14) and use the provided [input files](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_check/test).  
+-If you have the DNAzyme sequence and you want to predict cleavage efficiency in the target site, you can run the CleaveRNA with this mode.  
+- You must to provide the parameter file with these columns:
+   - **LA_seq**: The sequence of the left binding arm of the DNAzyme  
+   - **RA_seq**: The sequence of the right binding arm of the DNAzyme
+   - **CS**: Cleavage site dinucleotide of the enzyme.
+   - **CS_Index_query**: The index of dinucleotide cleavage site on the target file.
+   - **Tem**: Reaction temperature for DNAzyme activity.  
+   - **CA**: Catalytic core sequence of the DNAzyme.
+ - for the example file please check the [test_specific_query.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/specific_query/test/test_specific_query.csv)
+ - You can run this node with all the requeried files in [specific_query folder](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/specific_query/test)
+     
 
 
 ---
   
-
-
-
-
-
-
-       ```      
-     - **Target_check mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites of 
-       defined target region, and then the feature table is generated for that region.
-       
- 
-       - You need to provide the parameter file in CSV format and using this command line option
-       ```[bash]
-       --feature_mode target_check --params test_target_check.csv
-       ```
-       - Example of parameter file:
-       - In this mode the parameter file contains one extra column (Start_End_Index) that defines the target region index.
-
-       #### 📊 Data Table (Formatted View)
-       
-       | LA | RA | CS | Start_End_Index          | Tem         | CA               |
-       |----|----|----|--------------------------|-------------|------------------|
-       | 10 | 15 | AC | target_1.fasta:10-45     | 37          | ggcuagcuacaacga  |
-       | 10 | 15 | AC | target_2.fasta:50-100    | 37          | ggcuagcuacaacga  |
-
-       ---
-       - In this parameter file, each row is the required parameter for designing the DNAzymes that target the defined sites of target 
-         sequnce.
-         
-       - Column Definition:
-         - **Start_End_Index**: The index of the desired region on the target site sequences. 
-   
-         
-       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
-       ```csv
-        LA,RA,CS,Start_End_Index,Tem,CA
-        10,15,AC,1.fasta:10-45,37,ggcuagcuacaacga
-        10,15,AC,5.fasta:50-100,37,ggcuagcuacaacga
-       ```
-     -**specific_query mode**: In this mode, the DNAzyme sequence parameters are given and the features are just generated for the them.
-         - You need to provide the parameter file in CSV format and using this command line option
-       ```[bash]
-       --feature_mode specific_query --params test_specific_query.csv
-       ```
-       - Example of parameter file:
-       - In this mode the parameter file contains one extra column (Start_End_Index) that defines the target region index.
-
-       #### 📊 Data Table (Formatted View)
-       
-       | LA | RA | CS | Start_End_Index          | Tem         | CA               |
-       |----|----|----|--------------------------|-------------|------------------|
-       | 10 | 15 | AC | target_1.fasta:10-45     | 37          | ggcuagcuacaacga  |
-       | 10 | 15 | AC | target_2.fasta:50-100    | 37          | ggcuagcuacaacga  |
-
-       ---
-       - In this parameter file, each row is the required parameter for designing the DNAzymes that target the defined sites of target 
-         sequnce.
-         
-       - Column Definition:
-         - **Start_End_Index**: The index of the desired region on the target site sequences. 
-   
-         
-       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
-       ```csv
-        LA,RA,CS,Start_End_Index,Tem,CA
-        10,15,AC,1.fasta:10-45,37,ggcuagcuacaacga
-        10,15,AC,5.fasta:50-100,37,ggcuagcuacaacga
-
-
-
