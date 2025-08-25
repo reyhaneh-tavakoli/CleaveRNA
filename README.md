@@ -205,22 +205,26 @@ The tool will generate the following output files:
  ---
  
  ### Prediction Mode (Target_screen)
+
+In this mode, the prediction is performed only for the cleavage sites whose indices are provided by the user.  
+The input files in this mode are the same as in the default mode, except for the **parameter file**.  
+You can see an example of this file here: [`test_target_screen.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/test_target_screen.csv)  
+
+- The parameter file in this mode contains one additional column as described below:
+  - **CS_index**: This column contains the name of the target file and the index of the cleavage site.
+
+- You can run this mode with all the required input files in the [`target_screen`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_screen/test) directory.  
+
+**Note**: Please update lines 3–14 in the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/run.sh) file according to your conda environment.  
+
+---
  
- In this feature mode, the prediction just done for the cleavage sites that index given by user
- The input files in this mode is the same as defaulit mode except the one related to the **parameter file** that is described in detail below:  
- 
-  -The parameter file in this mode is the CSV file that contain six columns: 
-  
- 
-         
-       - Column Definition:
-         - **CS_index**: The name of target file and the index of cleavage site.
-         
-       #### 📎 Copyable HPV-BCL (HPBC) default parameter file
-       ```csv
-        LA,RA,CS,CS_index,Tem,CA
-        10,15,AC,1.fasta:17,37,ggcuagcuacaacga
-        10,15,CC,5.fasta:15,37,ggcuagcuacaacga
+ ### Prediction Mode (Target_check)
+
+
+
+
+
 
        ```      
      - **Target_check mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites of 
