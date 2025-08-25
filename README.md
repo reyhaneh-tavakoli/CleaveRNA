@@ -203,36 +203,15 @@ The tool will generate the following output files:
    - **Decision_score** → Model decision score.
      
  ---
- ### Prediction Mode (Default)
-     
-
-      
-
-
-
-       
-      
-     - **Target_screen mode**: In this mode, the DNAzyme sequences are designed based on the given parameters just for the cleavag sites index that you provided.
-     
-       index that given, and then the feature table is generated for that region.
  
-       - You need to provide the parameter file in CSV format and using this command line option
-       ```[bash]
-       --feature_mode target_screen --params test_target_screen.csv
-       ```
-       - Example of parameter file:
-       - In this mode the parameter file contains one extra column (CS_index) that defines the index of each desired cleavage site.
-
-       #### 📊 Data Table (Formatted View)
-       
-       | LA | RA | CS | CS_index          | Tem         | CA               |
-       |----|----|----|-------------------|-------------|------------------|
-       | 10 | 15 | AC | target_1.fasta:17 | 37          | ggcuagcuacaacga  |
-       | 10 | 15 | CC | target_2.fasta:15 | 37          | ggcuagcuacaacga  |
-
-       ---
-       - In this parameter file, each row is the required parameter for designing spesific DNAzyme that targets the defined index on the target 
-         sequnce.
+ ### Prediction Mode (Target_screen)
+ 
+ In this feature mode, the prediction just done for the cleavage sites that index given by user
+ The input files in this mode is the same as defaulit mode except the one related to the **parameter file** that is described in detail below:  
+ 
+  -The parameter file in this mode is the CSV file that contain six columns: 
+  
+ 
          
        - Column Definition:
          - **CS_index**: The name of target file and the index of cleavage site.
