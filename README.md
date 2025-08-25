@@ -203,7 +203,16 @@ The tool will generate the following output files:
    - **Decision_score** → Model decision score.
      
  ---
- 
+
+ ### Prediction Mode (Target_check)
+
+- In this mode, prediction and scoring of candidate cleavage sites are performed only for a specific region of the target sequence.  
+- The parameter file in **target_check** mode contains an additional column called **Start_End_Index**, which defines the desired region within the target sequence.  
+- Example file: [test_target_check.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/test_target_check.csv)  
+- To run the prediction in **target_check** mode, update the [run.sh](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/run.sh) script (lines 3–14) and use the provided [input files](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_check/test).  
+
+---
+
  ### Prediction Mode (Target_screen)
 
 In this mode, the prediction is performed only for the cleavage sites whose indices are provided by the user.  
@@ -219,7 +228,16 @@ You can see an example of this file here: [`test_target_screen.csv`](https://git
 
 ---
  
- ### Prediction Mode (Target_check)
+### Prediction Mode (Specific_query)
+
+- In this mode, prediction and scoring of candidate cleavage sites are performed only for a specific region of the target sequence.  
+- The parameter file in **target_check** mode contains an additional column called **Start_End_Index**, which defines the desired region within the target sequence.  
+- Example file: [test_target_check.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/test_target_check.csv)  
+- To run the prediction in **target_check** mode, update the [run.sh](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/run.sh) script (lines 3–14) and use the provided [input files](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_check/test).  
+
+
+---
+  
 
 
 
