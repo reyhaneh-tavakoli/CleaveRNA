@@ -33,26 +33,23 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
 
 #### Steps
 
-1. **Prepare the target sequence files in FASTA format**  
-   - Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)  
-   - **Notes:**  
-     - The minimum sequence length must be **150 nt**.  
-     - The sequence name must match the FASTA file name.  
+1. **Prepare the target sequence files in FASTA format**
+     
+- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)
+- **Notes:**  
+  - The minimum sequence length must be **150 nt**.  
+  - The sequence name must match the FASTA file name.  
+ - **Example:** If the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
 
-       **Example:** If the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
-
-       ```fasta
-       >BCL-1
-       GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAG
-       ATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCG
-       CCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC
-       ...
-       ```
-       The target files must be provided with the `--targets` flag:  
-       ```bash
-       --targets
-       ```
-       - Example: The file `BCL-1.fasta` must start with `>BCL-1`.  
+```fasta
+>BCL-1
+GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGAAGTACATCCATTATAAGCTGTCGCAGAGGGGCTACGAGTGGGATGCGGGAGATGTGGGCGCCGCGCCCCCGGGGGCCGCCCCCGCGCCGGGCATCTTCTCCTCGCAGCCCGGGCACACGCCCCATACAGC...
+ ```
+- The target files must be provided with the `--targets` flag:  
+```bash
+--targets HPV.fasta BCL-1.fasta BCL-2.fasta BCL-3.fasta BCL-4.fasta BCL-5.fasta
+```
+  
 2. **Prepare the parameter file (default mode)**  
    - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
    - This file contains **five columns**, described below:  
