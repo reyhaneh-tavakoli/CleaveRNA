@@ -135,69 +135,67 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 --prediction_mode HPBC_user_merged_num.csv
 ```
 
-- **Model name**  
-Select the model name, which will be used as the prefix for all generated output files.  
+- **Model name**
+  
+  Select the model name, which will be used as the prefix for all generated output files.  
   - Specify it with:  
 
 ```bash
 --model_name HPBC
 ```
 
-5. **Classification score file**  
+- **Classification score file**
+  
    - Example: [`HPBC_target.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_target.csv)  
-   - This file contains **two columns**:  
-     - **id2** → Cleavage site index  
-     - **Y** → Classification score of that position based on experimental data  
-   - **Notes**:  
-     - This file must be prepared by the user or you can use the corresponding file from the default training set.  
-     - If using your own dataset, the fraction cleavage of each site can be converted to binary classification as described in the **`data_preparation`** folder.  
-     - Upload this file with:  
+     - This file contains **two columns**: **id2**, which represents the cleavage site index, and **Y**, which indicates the classification score of that position based on experimental data.  
+     - **Notes**: This file must be prepared by the user or you can use the corresponding file from the default traini. If using your own dataset, the fraction cleavage of each site can be converted to binary classification as described in the **`data_preparation`** folder.
+         
+  - Upload this file with:  
 
-       ```bash
-       ----ML_target HPBC_target.csv
-       ```
+```bash
+--ML_target HPBC_target.csv
+```
 
-6. **Define the output directory**  
+- **Define the output directory**  
 
-   ```bash
-   --output_dir
-   ```
+```bash
+--output_dir
+```
       
-7. **Run the shell script**
+- **Run the shell script**
 
-   - Script: [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/run.sh)  
-   - Update **lines 3–14** in the script to match your conda environment.  
-   - From the input files directory, run the tool using:  
+  - Update **lines 3–14** [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/run.sh)  to match  your conda environment.  
+  - From the input files directory, run the tool using:  
 
-     ```bash
-     bash run.sh
-     ```
+```bash
+bash run.sh
+```
 
 ### Output
 
 The tool will generate the following output files:
 
 1. **Model performance metrics**  
-   - Example: [`HPBC_ML_metrics.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv)  
+   - Example: [`HPBC_ML_metrics.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv) 
    - Contains all machine learning scores related to the prediction.  
 
 2. **Prediction file**  
    - Example: [`HPBC_CleaveRNA_output.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_CleaveRNA_output.csv)  
-   - This file reports candidate cleavage sites scored by their accessibility for DNAzyme cleavage reactions.  
-
+   - This file reports candidate cleavage sites scored by their accessibility for DNAzyme cleavage reactions.
+     
    **Columns included:**  
-   - **CS_Index** → Nucleotide index of the cleavage site on the target sequence  
-   - **Dz_Seq** → DNAzyme sequence designed for each cleavage site  
-   - **CS_Target_File** → Target file name associated with each cleavage site  
-   - **Classification_score** → Binary classification of the cleavage sites based on ML prediction  
-   - **Prediction_score** → Score reflecting the accuracy of prediction at each position  
-   - **Decision_score** → Model decision score.
+     - **CS_Index** → Nucleotide index of the cleavage site on the target sequence  
+     - **Dz_Seq** → DNAzyme sequence designed for each cleavage site  
+     - **CS_Target_File** → Target file name associated with each cleavage site  
+     - **Classification_score** → Binary classification of the cleavage sites based on ML prediction  
+     - **Prediction_score** → Score reflecting the accuracy of prediction at each position  
+     - **Decision_score** → Model decision score.
      
  ---
 
  ### Prediction Mode (Target_check)
 
-- In this mode, prediction and scoring of candidate cleavage sites are performed only for a specific region of the target sequence.  
+In this mode, prediction and scoring of candidate cleavage sites are performed only for a specific region of the target sequence.  
 - The parameter file in **target_check** mode contains an additional column called **Start_End_Index**, which defines the desired region within the target sequence.  
 - Example file: [test_target_check.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/test_target_check.csv)  
 - To run the prediction in **target_check** mode, update the [run.sh](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/run.sh) script (lines 3–14) and use the provided [input files](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_check/test).  
@@ -207,7 +205,7 @@ The tool will generate the following output files:
  ### Prediction Mode (Target_screen)
 
 In this mode, the prediction is performed only for the cleavage sites whose indices are provided by the user.  
-The input files in this mode are the same as in the default mode, except for the **parameter file**.  
+- The input files in this mode are the same as in the default mode, except for the **parameter file**.  
 You can see an example of this file here: [`test_target_screen.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/test_target_screen.csv)  
 
 - The parameter file in this mode contains one additional column as described below:
@@ -215,7 +213,7 @@ You can see an example of this file here: [`test_target_screen.csv`](https://git
 
 - You can run this mode with all the required input files in the [`target_screen`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_screen/test) directory.  
 
-**Note**: Please update lines 3–14 in the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/run.sh) file according to your conda environment.  
+  - **Note**: Please update lines 3–14 in the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/run.sh) file according to your conda environment.  
 
 ---
  
