@@ -33,8 +33,6 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
 
 #### Steps
 
-#### Steps
-
 1. **Prepare the target sequence files in FASTA format**  
    - Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)  
    - **Notes:**  
@@ -68,17 +66,22 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
      --feature_mode default --params test_default.csv
      ```
 3. **Define the output directory**  
-   ```bash
-   --output_dir
+      ```bash
+      --output_dir
+      ```
 4. **Specify the model name**  
-   - Provide the model name using the `--model_name` flag:  
+   - Provide the model name using the `--model_name` flag:
+     
      ```bash
      --model_name "HPBC"
      ```
-5. **Run the shell script**  
+     
+5. **Run the shell script**
+   
    - Script: [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/run)  
    - Update **lines 3–12** to match your conda environment.  
-   - In the input files directory, run the tool with:  
+   - In the input files directory, run the tool with:
+     
      ```bash
      bash run.sh
      ```
@@ -119,18 +122,79 @@ for this mode the input files are:
     ```
   2. The parmeter files, in this example the default parameter mode 
    - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
-   - This file contains **five columns**, which are defined below:  
-     - **LA**: Left binding arm length of the DNAzyme.  
-     - **RA**: Right binding arm length of the DNAzyme.  
-     - **CS**: The cleavage site dinucleotide of the DNAzyme. In this example, the catalytic core of the **10-23 DNAzyme** is used. [Reference: Nat. Chem. 2021](https://doi.org/10.4103/1673-5374.335157)  
-     - **Tem**: Reaction temperature of the DNAzyme.  
-     - **CA**: Catalytic core sequence of the DNAzyme.  
+   - This file contains **five columns**, which are defined before and it must upload as input by this command:
+ 
+    ```bash
+    --feature_mode default --params test_default.csv
+    ```
+ 3. Upload the pre_train file 
+  - Example test files: [`HPBC_user_merged_num.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_user_merged_num.csv)
+    
+ - **Note**:  
+  - The pre_train file is the file that you generated in train_mode or you can use the generated default pre_train file.
+  - This file uploaded by this command:
+    
+    ```bash
+    --prediction_mode HPBC_user_merged_num.csv
+    ```
+  4. Select the model name as the prefix of all generated output files.
 
+  - The model name can be given by this command:
+    
+    ```bash
+    ----model_name HPBC
+    ```
+  5. Upload the classification score of pre_train file
+  - Example test files: [`HPBC_target.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_target.csv)
+  - this file contain two columns: the **id2** that reflected the clevage site index and the **Y** column that reflected the classification score of that position based on the exprimental data.  
+    
+ - **Note**:  
+  - This file must be prepared by user or you can use the related file for our default train_files
+  - If you use your own data set, the fraction clevage of each clevage site can be converted to the binary classification as we described it in **`data_preparation`** folder 
+  - This file uploaded by this command:
+    
+    ```bash
+    ----ML_target HPBC_target.csv
+    ```
+    
+  6. **Define the output directory**
+     
+      ```bash
+      --output_dir
+      ```
+      
+  7. **Run the shell script**
    
+   - Script: [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/run.sh)  
+   - Update **lines 3–14** to match your conda environment.  
+   - In the input files directory, run the tool with:
+     
+     ```bash
+     bash run.sh
+     ```
+    
+### Output
 
+The tool will generate these output files:
+**The efficiency of the machine learning model**:  
+[HPBC_ML_metrics.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv)  
 
+- In this file, you can find all the machine learning scores that are related to the prediction.
 
+**The prediction file**:  
+[HPBC_CleaveRNA_output.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_CleaveRNA_output.csv)  
 
+- THis is the prediction file which scoring candidate clevage sites based on the accessibility for clevage reaction of DNAzyme.
+- contain these columns:
+  -**CS_Index** : The nucleotide index of cleavage site on the target sequence.
+  -**Dz_Seq** : The sequence of  designed DNAzyme for each related cleavage site.
+  -**CS_Target_File** : THe related target_file name for each clevage site
+  -**Classification_score** : binary classification of the clevage sites based on the machine learning prediction
+  -**Classification_score**: The score that reflected the accuracy of prediction in each position
+  -
+
+      
+      
 
 
 ### Default mode 
