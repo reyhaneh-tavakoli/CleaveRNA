@@ -587,6 +587,10 @@ def train(args):
                 }
                 df_feature_set = df_feature_set.rename(columns=column_rename_map)
                 
+                # Convert U to T in Dz_Seq column
+                if 'Dz_Seq' in df_feature_set.columns:
+                    df_feature_set['Dz_Seq'] = df_feature_set['Dz_Seq'].str.replace('U', 'T')
+                
                 # Update keep_cols to use new column names
                 keep_cols = [col for col in ['CS_Index', 'Dz_Seq', 'CS_Target_File', 'Classification_score', 'reliability_score', 'decision_score', 'brier_score'] if col in df_feature_set.columns]
                 df_feature_set = df_feature_set[keep_cols]

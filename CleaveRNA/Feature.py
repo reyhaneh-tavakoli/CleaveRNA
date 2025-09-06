@@ -68,7 +68,7 @@ def prepare_sequences(sequence, CS, left_arm_length, right_arm_length, core):
         if pos1 <= 8 or pos2 <= 8:
             continue
         left_arm = sequence[pos1:pos1 + left_arm_length]
-        right_arm = sequence[pos2 - right_arm_length - 3:pos2 - 2]
+        right_arm = sequence[pos2 - right_arm_length:pos2]
         if not set(left_arm).issubset(valid) or not set(right_arm).issubset(valid):
             continue
         comp = lambda s: ''.join(["AUCG"["UAGC".index(n)] for n in s][::-1])
