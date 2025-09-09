@@ -14,11 +14,11 @@ conda activate intarna-env
 script_path="../../../CleaveRNA.py"  # Path to CleaveRNA.py
 
 # Define the input files and parameters
-TARGETS="HPV.fasta BCL-1.fasta BCL-2.fasta BCL-3.fasta BCL-4.fasta BCL-5.fasta" # Space-separated FASTA files
+TARGETS="HPV.fasta" # Space-separated FASTA files
 PARAMS="test_default.csv"
 DEFAULT_TRAIN_FILE="HPBC_user_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="HPBC"
-ML_TARGET="HPBC_target.csv"
+ML_TRAINING_SCORE="HPBC_target.csv"
 
 # Record the start time
 start_time=$(date)
@@ -32,7 +32,7 @@ python3 "$script_path" \
   --feature_mode default \
   --prediction_mode $DEFAULT_TRAIN_FILE \
   --model_name $MODEL_NAME \
-  --ML_target $ML_TARGET \
+  --ML_training_score $ML_TRAINING_SCORE \
   --output_dir "$output_dir"
 
 # Record the end time

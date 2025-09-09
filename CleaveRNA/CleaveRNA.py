@@ -71,8 +71,8 @@ def predict_execution_time(args):
     # Factor in the number of target files
     if args.targets:
         file_factor = len(args.targets) * 5  # 5 seconds per target file
-    elif args.train_mode:
-        file_factor = len(args.train_mode) * 8  # 8 seconds per training file
+    elif args.training_mode:
+        file_factor = len(args.training_mode) * 8  # 8 seconds per training file
     else:
         file_factor = 5
     
@@ -89,7 +89,7 @@ def predict_execution_time(args):
     # Factor in prediction vs training mode
     if args.prediction_mode:
         mode_time = 20  # Prediction mode takes longer
-    elif args.train_mode:
+    elif args.training_mode:
         mode_time = 15  # Training mode
     else:
         mode_time = 10
@@ -169,17 +169,17 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name, progress_t
         progress_tracker.update(2, f"Loading training data for {model_name}")
 
     df = pd.read_csv(train_data_path)
-    if 'Y' not in df.columns:
-        raise ValueError("Training data must include a target column named 'Y'.")
+    if 'ML_training_score' not in df.columns:
+        raise ValueError("Training data must include a target column named 'ML_training_score'.")
 
     # Check class balance and balance if needed
-    y_counts = df['Y'].value_counts()
+    y_counts = df['ML_training_score'].value_counts()
     if len(y_counts) == 2 and y_counts.iloc[0] != y_counts.iloc[1]:
         # Suppressed balance detection message
         if progress_tracker:
             progress_tracker.update(1, "Balancing classes")
         min_count = y_counts.min()
-        df_balanced = df.groupby('Y', group_keys=False).apply(lambda x: x.sample(min_count, random_state=42)).reset_index(drop=True)
+        df_balanced = df.groupby('ML_training_score', group_keys=False).apply(lambda x: x.sample(min_count, random_state=42)).reset_index(drop=True)
         df = df_balanced
         # Suppressed balance success message
     elif len(y_counts) == 2:
@@ -191,8 +191,8 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name, progress_t
     if progress_tracker:
         progress_tracker.update(2, "Preprocessing features")
 
-    X_df = df.drop(columns=['Y'])
-    y = df['Y']
+    X_df = df.drop(columns=['ML_training_score'])
+    y = df['ML_training_score']
 
     # Handle missing values
     imputer = SimpleImputer(strategy='mean')
@@ -281,7 +281,7 @@ def train(args):
     # Determine total steps based on mode
     if args.prediction_mode:
         total_steps = 25  # More steps for prediction mode
-    elif args.train_mode:
+    elif args.training_mode:
         total_steps = 15  # Fewer steps for train mode
     else:
         total_steps = 10
@@ -298,8 +298,8 @@ def train(args):
         progress.update(1, "Setting up output directory")
         progress.step_success("Output directory setup", time.time() - step_start)
 
-        # Skip initial Feature.py run for train_mode as it handles its own feature generation
-        if not args.train_mode:
+        # Skip initial Feature.py run for training_mode as it handles its own feature generation
+        if not args.training_mode:
             # Step 2: Run Feature.py
             step_start = time.time()
             print("🔧 Running Feature.py to generate 'all_generated_merged_num.csv'...")
@@ -333,7 +333,7 @@ def train(args):
 
         if args.prediction_mode:
             model_name = args.model_name
-            target_file = args.ML_target
+            target_file = args.ML_training_score
             default_merged_file = args.prediction_mode
 
             # Step 4: Validate required files
@@ -392,8 +392,8 @@ def train(args):
             progress.update(2, "Balancing target data")
             df_target = pd.read_csv(target_file)
             np.random.seed(89273554)
-            df_balanced = df_target.groupby('Y', group_keys=False).apply(
-                lambda x: x.sample(df_target['Y'].value_counts().min(), random_state=89273554)
+            df_balanced = df_target.groupby('ML_training_score', group_keys=False).apply(
+                lambda x: x.sample(df_target['ML_training_score'].value_counts().min(), random_state=89273554)
             )
             balanced_file = f"{model_name}_balanced_classification.csv"
             df_balanced.to_csv(balanced_file, index=False)
@@ -418,7 +418,7 @@ def train(args):
             progress.update(1, "Preparing feature sets")
             feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
             df_train = pd.read_csv(merged_train_file)
-            feature_set_with_y = feature_set + ['Y']
+            feature_set_with_y = feature_set + ['ML_training_score']
             feature_set_file = f"{model_name}_ML_train_feature_set.csv"
             df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
             report_file_status(feature_set_file, "ML train feature set")
@@ -520,8 +520,8 @@ def train(args):
                         scaler = StandardScaler()
                         X_std = scaler.fit_transform(X_imputed)
                         y_true = None
-                        if 'Y' in df_test.columns:
-                            y_true = df_test['Y'].reset_index(drop=True)
+                        if 'ML_training_score' in df_test.columns:
+                            y_true = df_test['ML_training_score'].reset_index(drop=True)
                             if len(y_true) != len(X_full):
                                 y_true = y_true.iloc[:len(X_full)].reset_index(drop=True)
                         
@@ -609,9 +609,9 @@ def train(args):
                 report_file_status(feature_set_predicted_path, "Sorted CleaveRNA output")
             progress.step_success("Final result processing", time.time() - step_start)
 
-        elif args.train_mode:
+        elif args.training_mode:
             model_name = args.model_name
-            user_train_files = args.train_mode
+            user_train_files = args.training_mode
             
             # Step 4: Generate user features
             step_start = time.time()
@@ -639,7 +639,7 @@ def train(args):
                 print(f"❌ Error: {default_generated_file} not found after Feature.py run.")
                 sys.exit(1)
         else:
-            print("❌ Error: Either --prediction_mode or --train_mode must be provided.")
+            print("❌ Error: Either --prediction_mode or --training_mode must be provided.")
             sys.exit(1)
 
         # Cleanup intermediate files
@@ -661,8 +661,8 @@ def train(args):
         # Protect user-provided files
         if args.params:
             protected_input_files.add(os.path.basename(args.params))
-        if args.ML_target:
-            protected_input_files.add(os.path.basename(args.ML_target))
+        if args.ML_training_score:
+            protected_input_files.add(os.path.basename(args.ML_training_score))
         if args.specific_csv:
             protected_input_files.add(os.path.basename(args.specific_csv))
         if args.prediction_mode:
@@ -672,8 +672,8 @@ def train(args):
         if args.targets:
             for target in args.targets:
                 protected_input_files.add(os.path.basename(target))
-        if args.train_mode:
-            for train_file in args.train_mode:
+        if args.training_mode:
+            for train_file in args.training_mode:
                 protected_input_files.add(os.path.basename(train_file))
         
         # List of all potential intermediate files to remove
@@ -856,11 +856,11 @@ def main():
         parser.add_argument('--params', help="Path to the CSV file containing LA, RA, CS, temperature, and core")
         parser.add_argument('--feature_mode', choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
         parser.add_argument('--prediction_mode', help="CSV file for prediction mode")
-        parser.add_argument('--train_mode', nargs='+', help="FASTA file(s) for user train mode")
+        parser.add_argument('--training_mode', nargs='+', help="FASTA file(s) for user train mode")
         parser.add_argument('--model_name', required=True, help="Model name for output file naming")
         parser.add_argument('--output_dir', help="Directory to save all outputs", default=os.getcwd())
         parser.add_argument('--specific_csv', help="CSV file for specific_query mode", default=None)
-        parser.add_argument('--ML_target', help="CSV file containing target labels for ML training (required for --prediction_mode)")
+        parser.add_argument('--ML_training_score', help="CSV file containing target labels for ML training (required for --prediction_mode)")
         args = parser.parse_args()
 
         # Show initial configuration
@@ -870,19 +870,19 @@ def main():
         if args.prediction_mode:
             print(f"   Mode: Prediction")
             print(f"   Targets: {len(args.targets) if args.targets else 0} files")
-        elif args.train_mode:
+        elif args.training_mode:
             print(f"   Mode: Training")
-            print(f"   Training files: {len(args.train_mode)} files")
+            print(f"   Training files: {len(args.training_mode)} files")
         print(f"   Output directory: {args.output_dir}")
 
         # Validate that one of the train modes is specified
-        if not args.prediction_mode and not args.train_mode:
-            print("❌ Error: Either --prediction_mode or --train_mode must be provided.")
+        if not args.prediction_mode and not args.training_mode:
+            print("❌ Error: Either --prediction_mode or --training_mode must be provided.")
             sys.exit(1)
 
-        # Validate ML_target is provided for prediction_mode
-        if args.prediction_mode and not args.ML_target:
-            print("❌ Error: --ML_target is required when using --prediction_mode.")
+        # Validate ML_training_score is provided for prediction_mode
+        if args.prediction_mode and not args.ML_training_score:
+            print("❌ Error: --ML_training_score is required when using --prediction_mode.")
             sys.exit(1)
 
         # Validate targets is provided for prediction_mode
@@ -923,11 +923,11 @@ if __name__ == "__main__":
 
 # USAGE NOTE:
 # Prediction mode - uses pre-existing training data for prediction:
-#   python3 CleaveRNA.py --targets <fasta1> <fasta2> ... --params <params.csv> --feature_mode default --prediction_mode <train_csv_file> --model_name <model_name> --ML_target <target.csv> --output_dir <outdir>
+#   python3 CleaveRNA.py --targets <fasta1> <fasta2> ... --params <params.csv> --feature_mode default --prediction_mode <train_csv_file> --model_name <model_name> --ML_training_score <target.csv> --output_dir <outdir>
 #
 # Train mode - generates training features from user FASTA files:
-#   python3 CleaveRNA.py --train_mode <train1.fasta> <train2.fasta> ... --feature_mode default --output_dir <outdir> --model_name <model_name>
+#   python3 CleaveRNA.py --training_mode <train1.fasta> <train2.fasta> ... --feature_mode default --output_dir <outdir> --model_name <model_name>
 #   This mode generates only {model_name}_user_merged_num.csv for training feature extraction.
-#   Note: feature_mode is always 'default' for train_mode.
+#   Note: feature_mode is always 'default' for training_mode.
 #
 # The output files will be in <outdir>.
