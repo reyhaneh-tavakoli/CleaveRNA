@@ -67,8 +67,8 @@ def prepare_sequences(sequence, CS, left_arm_length, right_arm_length, core):
     for start, end, motif, pos1, pos2 in CS:
         if pos1 <= 8 or pos2 <= 8:
             continue
-        left_arm = sequence[pos1 - 1:pos1 + left_arm_length - 1]
-        right_arm = sequence[pos2 - right_arm_length - 3:pos2 - 3]
+        left_arm = sequence[pos1:pos1 + left_arm_length]
+        right_arm = sequence[pos2 - right_arm_length - 2:pos2 - 2]
         if not set(left_arm).issubset(valid) or not set(right_arm).issubset(valid):
             continue
         comp = lambda s: ''.join(["AUCG"["UAGC".index(n)] for n in s][::-1])
@@ -672,7 +672,7 @@ def main(args=None):
             LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
             start_end_data = row['Start_End_Index'].split(':')
             if len(start_end_data) != 2:
-                raise ValueError("Invalid format in Start_End_Index column. Expected format: 'target_file:start-end' (e.g., '1.fasta:50-100').")
+                raise ValueError("Invalid format in Start_End_Index column. Expmected format: 'target_file:start-end' (e.g., '1.fasta:50-100').")
 
             target_file_name, positions = start_end_data[0], start_end_data[1]
             try:
@@ -691,15 +691,32 @@ def main(args=None):
                     raise ValueError(f"Invalid start-end positions {start}-{end} for file {target_file_name}. Must be within the bounds of the target sequence and start < end.")
 
                 print(f"Checking target region from position {start} to {end} in the target sequence of {target_file_name}.")
-                motif_matches = find_CS(target_seq[start - 1:end], CS)
+                # Extract the subsequence within the start-end region
+                target_subseq = target_seq[start - 1:end]
+                motif_matches = find_CS(target_subseq, CS)
 
-                # Adjust positions to be relative to the full sequence
-                adjusted_matches = [
-                    (start + match[0], start + match[1], match[2], start + match[3], start + match[4])
-                    for match in motif_matches
-                ]
-
-                queries = prepare_sequences(target_seq, adjusted_matches, LA, RA, core)
+                # Generate arms only within the start-end region using the subsequence
+                queries = prepare_sequences(target_subseq, motif_matches, LA, RA, core)
+                
+                # Adjust the query names to reflect the actual positions in the full sequence
+                adjusted_queries = []
+                for query_name, query_seq in queries:
+                    # Extract motif and positions from the query name format "motif-pos1-pos2"
+                    parts = query_name.split('-')
+                    if len(parts) >= 3:
+                        motif = parts[0]
+                        rel_pos1 = int(parts[1])  # 1-indexed position in subsequence
+                        rel_pos2 = int(parts[2])  # 1-indexed position in subsequence
+                        # Convert to absolute 1-indexed positions in the full sequence
+                        # start is 1-based, rel_pos1 is 1-based in subsequence
+                        # Formula: abs_pos = (start - 1) + rel_pos
+                        abs_pos1 = (start - 1) + rel_pos1
+                        abs_pos2 = (start - 1) + rel_pos2
+                        adjusted_name = f"{motif}-{abs_pos1}-{abs_pos2}"
+                        adjusted_queries.append((adjusted_name, query_seq))
+                    else:
+                        adjusted_queries.append((query_name, query_seq))
+                queries = adjusted_queries
                 query_file = f"queries_{os.path.basename(target_file_name).split('.')[0]}_{start}_{end}.fasta"
                 write_queries_to_fasta(queries, query_file)
                 print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
@@ -864,8 +881,9 @@ def main(args=None):
                 motif_matches = find_CS(target_seq[start - 1:end], CS)
 
                 # Adjust positions to be relative to the full sequence
+                # match format: (match_start, match_end, motif, pos1, pos2) where pos1, pos2 are 1-based in subsequence
                 adjusted_matches = [
-                    (start + match[0], start + match[1], match[2], start + match[3], start + match[4])
+                    ((start - 1) + match[0], (start - 1) + match[1], match[2], (start - 1) + match[3], (start - 1) + match[4])
                     for match in motif_matches
                 ]
 

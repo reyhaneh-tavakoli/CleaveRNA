@@ -18,7 +18,7 @@ TARGETS="target_1.fasta target_2.fasta"  # Space-separated FASTA files
 PARAMS="test_specific_query.csv"
 PREDICTION_MODE="HPBC_user_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="HPBC"
-ML_TARGET="HPBC_target.csv"
+ML_Training_score="HPBC_target.csv"
 
 # Record the start time
 start_time=$(date)
@@ -32,7 +32,7 @@ python3 "$script_path" \
   --feature_mode specific_query \
   --prediction_mode $PREDICTION_MODE \
   --model_name $MODEL_NAME \
-  --ML_target $ML_TARGET \
+  --ML_training_score $ML_Training_score\
   --output_dir "$output_dir"
 
 # Record the end time
