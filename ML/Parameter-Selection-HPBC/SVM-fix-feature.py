@@ -7,7 +7,7 @@ from sklearn.svm import SVC
 import itertools
 
 # Load dataset
-data_path = "HPBC_default_ML_train.csv"
+data_path = "filtered_train.csv"
 output_dir = "ML_output"
 os.makedirs(output_dir, exist_ok=True)
 

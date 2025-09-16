@@ -18,7 +18,7 @@ TARGETS="1.fasta 2.fasta 3.fasta 4.fasta 5.fasta 6.fasta 7.fasta 8.fasta 9.fasta
 PARAMS="test_default.csv"
 DEFAULT_TRAIN_FILE="SARS_user_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="SARS"
-ML_TARGET="SARS_target.csv"
+ML_Training_Score="SARS_target.csv"
 
 # Record the start time
 start_time=$(date)
@@ -32,7 +32,7 @@ python3 "$script_path" \
   --feature_mode default \
   --prediction_mode $DEFAULT_TRAIN_FILE \
   --model_name $MODEL_NAME \
-  --ML_target $ML_TARGET \
+  --ML_training_score $ML_Training_Score\
   --output_dir "$output_dir"
 
 # Record the end time

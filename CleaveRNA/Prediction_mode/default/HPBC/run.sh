@@ -14,7 +14,7 @@ conda activate intarna-env
 script_path="../../../CleaveRNA.py"  # Path to CleaveRNA.py
 
 # Define the input files and parameters
-TARGETS="HPV.fasta" # Space-separated FASTA files
+TARGETS="HPV.fasta BCL-1.fasta BCL-2.fasta BCL-3.fasta BCL-4.fasta BCL-5.fasta" # Space-separated FASTA files
 PARAMS="test_default.csv"
 DEFAULT_TRAIN_FILE="HPBC_user_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="HPBC"

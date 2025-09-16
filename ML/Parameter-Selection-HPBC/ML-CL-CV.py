@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression
 import itertools
 
 # Load dataset directly
-data_path = "HPBC_default_ML_train.csv"
+data_path = "HPBC_ML_train.csv"
 output_dir = "ML_output"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -60,9 +60,15 @@ def evaluate_model(model, X, y, skf):
         "f1_mean": np.mean(f1s), "f1_std": np.std(f1s)
     }
 
-# Run combinations of all possible feature sets with 8 to 13 features from all columns
+# MODIFIED: Run combinations of all possible feature sets with 8 to 13 features from all columns
 all_feature_columns = X.columns
-for r in range(8, min(13, len(all_feature_columns)) + 1):
+print(f"Total features available: {len(all_feature_columns)}")
+print(f"Testing feature combinations from 8 to 13 features...")
+
+for r in range(8, min(14, len(all_feature_columns) + 1)):  # Changed to 8-13
+    num_combinations = len(list(itertools.combinations(all_feature_columns, r)))
+    print(f"Testing {num_combinations} combinations with {r} features...")
+    
     for feature_subset in itertools.combinations(all_feature_columns, r):
         X_subset = X[list(feature_subset)]
         feature_name = ", ".join(feature_subset)
@@ -71,7 +77,7 @@ for r in range(8, min(13, len(all_feature_columns)) + 1):
             results.append([model_name, feature_name, *result.values()])
 
 # Save results in the specified output directory, sorted by F1 Mean (descending)
-output_path = os.path.join(output_dir, "comparition_results.csv")
+output_path = os.path.join(output_dir, "comparison_results.csv")
 
 results_df = pd.DataFrame(results, columns=[
     "Model", "Feature Set",
@@ -84,3 +90,4 @@ results_df = results_df.sort_values(by="F1 Mean", ascending=False)
 results_df.to_csv(output_path, index=False)
 
 print(f"Results saved to {output_path}")
+print(f"Total combinations tested: {len(results_df)}")

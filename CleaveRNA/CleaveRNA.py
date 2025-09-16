@@ -1,3 +1,4 @@
+
 import argparse
 import os
 import sys
@@ -652,6 +653,7 @@ def train(args):
             f"{model_name}_ML_metrics.csv",
             f"{model_name}_CleaveRNA_output.csv", 
             f"{model_name}_ML_train.csv",
+            f"{model_name}_ML_train_feature_set.csv",
             "parameters.cfg"
         }
         
@@ -684,7 +686,6 @@ def train(args):
             "CS_info.csv",
             f"{model_name}_statistics.csv",
             f"{model_name}_standardized_train.csv",
-            f"{model_name}_balanced_classification.csv",
             f"{model_name}_ML_train_feature_set.csv",
             f"{model_name}_SVM.pkl",
             f"{model_name}_user_merged_num.csv",
