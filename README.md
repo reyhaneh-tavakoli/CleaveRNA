@@ -75,7 +75,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 --model_name "HPBC"
 ```
 5. **Run the shell script**
-- Update the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/run)  **lines 3–12** to match your conda environment.  
+- Update the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/run.sh)  **lines 3–12** to match your conda environment.  
 - In the input files directory, run the tool with:
      
 ```bash
