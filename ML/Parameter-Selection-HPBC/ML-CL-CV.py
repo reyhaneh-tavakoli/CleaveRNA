@@ -7,24 +7,35 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 import itertools
+import datetime
 
-# Load dataset directly
+# -----------------------------
+# Setup
+# -----------------------------
 data_path = "HPBC_ML_train.csv"
 output_dir = "ML_output"
 os.makedirs(output_dir, exist_ok=True)
+log_file = os.path.join(output_dir, "run_report.log")
 
+# Helper function to log messages
+def log(msg):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {msg}")
+
+# -----------------------------
+# Load dataset
+# -----------------------------
 df = pd.read_csv(data_path)
-
-# Ensure target column 'Y' exists
 target_column = 'Y'
 if target_column not in df.columns:
     raise ValueError(f"Target column '{target_column}' not found in dataset.")
 
-# Separate features and target
 X = df.drop(columns=[target_column, 'id2']) if 'id2' in df.columns else df.drop(columns=[target_column])
 y = df[target_column]
 
-# Define models to evaluate
+# -----------------------------
+# Define models
+# -----------------------------
 models = {
     "LogisticRegression": LogisticRegression(max_iter=1000),
     "RandomForest": RandomForestClassifier(),
@@ -32,27 +43,23 @@ models = {
     "SVM": SVC(probability=True)
 }
 
-# Stratified 5-fold cross-validation
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-# Prepare result storage
 results = []
 
+# -----------------------------
+# Evaluation function
+# -----------------------------
 def evaluate_model(model, X, y, skf):
     accuracies, precisions, recalls, f1s = [], [], [], []
-
     for train_idx, test_idx in skf.split(X, y):
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-
         accuracies.append(accuracy_score(y_test, y_pred))
         precisions.append(precision_score(y_test, y_pred, zero_division=0))
         recalls.append(recall_score(y_test, y_pred, zero_division=0))
         f1s.append(f1_score(y_test, y_pred, zero_division=0))
-
     return {
         "accuracy_mean": np.mean(accuracies), "accuracy_std": np.std(accuracies),
         "precision_mean": np.mean(precisions), "precision_std": np.std(precisions),
@@ -60,25 +67,37 @@ def evaluate_model(model, X, y, skf):
         "f1_mean": np.mean(f1s), "f1_std": np.std(f1s)
     }
 
-# MODIFIED: Run combinations of all possible feature sets with 8 to 13 features from all columns
+# -----------------------------
+# Run feature combinations
+# -----------------------------
 all_feature_columns = X.columns
-print(f"Total features available: {len(all_feature_columns)}")
-print(f"Testing feature combinations from 8 to 13 features...")
+total_combinations = sum(1 for r in range(8, 14) for _ in itertools.combinations(all_feature_columns, r))
+log(f"Total feature combinations to evaluate: {total_combinations}")
 
-for r in range(8, min(14, len(all_feature_columns) + 1)):  # Changed to 8-13
-    num_combinations = len(list(itertools.combinations(all_feature_columns, r)))
-    print(f"Testing {num_combinations} combinations with {r} features...")
-    
+count = 0
+for r in range(8, 14):
     for feature_subset in itertools.combinations(all_feature_columns, r):
-        X_subset = X[list(feature_subset)]
+        count += 1
         feature_name = ", ".join(feature_subset)
+        log(f"START combination {count}/{total_combinations}: {feature_name}")
+        combo_start_time = datetime.datetime.now()
+
+        X_subset = X[list(feature_subset)]
         for model_name, model in models.items():
+            model_start_time = datetime.datetime.now()
+            log(f"  START model {model_name} for combination {count}")
             result = evaluate_model(model, X_subset, y, skf)
             results.append([model_name, feature_name, *result.values()])
+            model_end_time = datetime.datetime.now()
+            log(f"  END model {model_name} for combination {count} | Duration: {model_end_time - model_start_time}")
 
-# Save results in the specified output directory, sorted by F1 Mean (descending)
-output_path = os.path.join(output_dir, "comparison_results.csv")
+        combo_end_time = datetime.datetime.now()
+        log(f"END combination {count}/{total_combinations}: {feature_name} | Duration: {combo_end_time - combo_start_time}")
 
+# -----------------------------
+# Save results
+# -----------------------------
+output_path = os.path.join(output_dir, "comparition_results.csv")
 results_df = pd.DataFrame(results, columns=[
     "Model", "Feature Set",
     "Accuracy Mean", "Accuracy Std",
@@ -88,6 +107,4 @@ results_df = pd.DataFrame(results, columns=[
 ])
 results_df = results_df.sort_values(by="F1 Mean", ascending=False)
 results_df.to_csv(output_path, index=False)
-
-print(f"Results saved to {output_path}")
-print(f"Total combinations tested: {len(results_df)}")
+log(f"All results saved to {output_path}")

@@ -406,7 +406,24 @@ def train(args):
             # Step 9: Merge training data
             step_start = time.time()
             progress.update(2, "Merging training datasets")
-            df_merged_train = pd.merge(df_standardized, df_balanced, on='id2')
+            
+            # Build ML train file row-by-row, matching balanced file order and count
+            ml_train_rows = []
+            missing_id2 = []
+            for _, balanced_row in df_balanced.iterrows():
+                id2_val = balanced_row['id2']
+                standardized_match = df_standardized[df_standardized['id2'] == id2_val]
+                if not standardized_match.empty:
+                    # Combine standardized features and balanced target
+                    combined_row = standardized_match.iloc[0].to_dict()
+                    combined_row['ML_training_score'] = balanced_row['ML_training_score']
+                    ml_train_rows.append(combined_row)
+                else:
+                    missing_id2.append(id2_val)
+            df_merged_train = pd.DataFrame(ml_train_rows)
+            if missing_id2:
+                print(f"⚠️ Warning: {len(missing_id2)} id2 values from balanced file not found in standardized file: {missing_id2[:10]}{'...' if len(missing_id2) > 10 else ''}")
+            print(f"✅ ML train file created with {len(df_merged_train)} rows (should match balanced file: {len(df_balanced)})")
             merged_train_file = f"{model_name}_ML_train.csv"
             df_merged_train.to_csv(merged_train_file, index=False)
             report_file_status(merged_train_file, "ML train")
@@ -654,6 +671,7 @@ def train(args):
             f"{model_name}_CleaveRNA_output.csv", 
             f"{model_name}_ML_train.csv",
             f"{model_name}_ML_train_feature_set.csv",
+            f"{model_name}_balanced_classification.csv",
             "parameters.cfg"
         }
         

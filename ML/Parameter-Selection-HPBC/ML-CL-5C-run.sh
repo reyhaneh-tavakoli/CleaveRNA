@@ -1,46 +1,45 @@
 #!/bin/bash
 
-# Get the current directory
-CURRENT_DIR=$(pwd)
+# -----------------------------
+# Setup
+# -----------------------------
+PYTHON_SCRIPT="ML-CL-CV.py"
+OUTPUT_DIR="ML_output"
+LOG_FILE="$OUTPUT_DIR/run_report.log"
 
-# Define paths
-SCRIPT_PATH="$CURRENT_DIR/ML-CL-CV.py"  # Replace with your actual script filename
-INPUT_CSV="$CURRENT_DIR/HPBC_ML_train.csv"
-OUTPUT_DIR="$CURRENT_DIR/ML_output"
-
-# Log start time
-START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
-echo "Script started at: $START_TIME"
-echo "Current directory: $CURRENT_DIR"
-
-# Check if input CSV exists
-if [ ! -f "$INPUT_CSV" ]; then
-    echo "ERROR: Input file $INPUT_CSV not found!"
-    exit 1
-fi
-
-# Check if Python script exists
-if [ ! -f "$SCRIPT_PATH" ]; then
-    echo "ERROR: Python script $SCRIPT_PATH not found!"
-    exit 1
-fi
-
-# Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
-# Run the Python script with PyMOL's packages in the path
-echo "Running Python script..."
-PYTHONPATH="/home/reytakop/Documents/software/Pymol/pymol/lib/python3.10/site-packages:$PYTHONPATH" \
-python3 "$SCRIPT_PATH"
+# Record start time
+START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+echo "===============================" | tee "$LOG_FILE"
+echo "ML run started at: $START_TIME" | tee -a "$LOG_FILE"
+echo "===============================" | tee -a "$LOG_FILE"
 
-# Check if script ran successfully
-if [ $? -eq 0 ]; then
-    echo "Python script completed successfully."
-else
-    echo "ERROR: Python script failed to run."
+# Step 1: Verify Python script exists
+if [ ! -f "$PYTHON_SCRIPT" ]; then
+    echo "ERROR: Python script $PYTHON_SCRIPT not found!" | tee -a "$LOG_FILE"
     exit 1
 fi
+echo "Step 1: Python script found." | tee -a "$LOG_FILE"
 
-# Log end time
+# Step 2: Create output directory
+echo "Step 2: Output directory $OUTPUT_DIR is ready." | tee -a "$LOG_FILE"
+
+# Step 3: Start ML evaluation
+echo "Step 3: Starting ML evaluation..." | tee -a "$LOG_FILE"
+python3 "$PYTHON_SCRIPT" 2>&1 | tee -a "$LOG_FILE"
+
+# Step 4: End of ML evaluation
+echo "Step 4: ML evaluation completed." | tee -a "$LOG_FILE"
+
+# Record end time
 END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
-echo "Script finished at: $END_TIME"
+echo "===============================" | tee -a "$LOG_FILE"
+echo "ML run ended at: $END_TIME" | tee -a "$LOG_FILE"
+echo "===============================" | tee -a "$LOG_FILE"
+
+# Step 5: Completion message
+echo "Step 5: All combinations evaluated." | tee -a "$LOG_FILE"
+echo "Check output CSV: $OUTPUT_DIR/comparition_results.csv" | tee -a "$LOG_FILE"
+echo "Check detailed log: $LOG_FILE" | tee -a "$LOG_FILE"
+
