@@ -403,27 +403,44 @@ def train(args):
             # Skip generating non-balanced target and default ML test files
             progress.step_success("Target data balancing", time.time() - step_start)
 
-            # Step 9: Merge training data
+            # Step 9: Merge training data using Dz_seq and seq2 columns
             step_start = time.time()
             progress.update(2, "Merging training datasets")
             
-            # Build ML train file row-by-row, matching balanced file order and count
-            ml_train_rows = []
-            missing_id2 = []
-            for _, balanced_row in df_balanced.iterrows():
-                id2_val = balanced_row['id2']
-                standardized_match = df_standardized[df_standardized['id2'] == id2_val]
-                if not standardized_match.empty:
-                    # Combine standardized features and balanced target
-                    combined_row = standardized_match.iloc[0].to_dict()
-                    combined_row['ML_training_score'] = balanced_row['ML_training_score']
-                    ml_train_rows.append(combined_row)
-                else:
-                    missing_id2.append(id2_val)
-            df_merged_train = pd.DataFrame(ml_train_rows)
-            if missing_id2:
-                print(f"⚠️ Warning: {len(missing_id2)} id2 values from balanced file not found in standardized file: {missing_id2[:10]}{'...' if len(missing_id2) > 10 else ''}")
-            print(f"✅ ML train file created with {len(df_merged_train)} rows (should match balanced file: {len(df_balanced)})")
+            # Merge balanced file (Dz_seq) with standardized file (seq2)
+            # Search each Dz_seq row in seq2 column and merge if found
+            print(f"🔄 Merging based on Dz_seq (balanced) ↔ seq2 (standardized)...")
+            
+            # Use left join to keep all balanced rows, then filter out unmatched ones
+            df_merged_train = df_balanced.merge(
+                df_standardized, 
+                left_on='Dz_seq', 
+                right_on='seq2', 
+                how='left'
+            )
+            
+            # Remove rows where seq2 is NaN (no match found in standardized file)
+            initial_balanced_count = len(df_balanced)
+            df_merged_train = df_merged_train.dropna(subset=['seq2'])
+            final_count = len(df_merged_train)
+            
+            # Report merging statistics
+            removed_count = initial_balanced_count - final_count
+            if removed_count > 0:
+                print(f"⚠️ Warning: Removed {removed_count} Dz_seq rows with no corresponding seq2 in standardized file")
+                print(f"Merged dataset: {final_count} rows (from {initial_balanced_count} balanced rows)")
+            else:
+                print(f"✅ Successfully merged all {final_count} rows from balanced file with standardized file")
+            
+            # Clean up duplicate columns - drop Dz_seq and keep seq2 from standardized file
+            if 'Dz_seq' in df_merged_train.columns:
+                df_merged_train = df_merged_train.drop(columns=['Dz_seq'])
+            
+            # Ensure ML_training_score is preserved
+            if 'ML_training_score' not in df_merged_train.columns:
+                print("❌ Error: ML_training_score column was lost during merge")
+                sys.exit(1)
+            
             merged_train_file = f"{model_name}_ML_train.csv"
             df_merged_train.to_csv(merged_train_file, index=False)
             report_file_status(merged_train_file, "ML train")
@@ -674,6 +691,10 @@ def train(args):
             f"{model_name}_balanced_classification.csv",
             "parameters.cfg"
         }
+        
+        # Add training mode specific files to keep
+        if args.training_mode:
+            keep_files.add(f"{model_name}_user_merged_num.csv")
         
         # Input files to protect (never remove these)
         protected_input_files = set()
