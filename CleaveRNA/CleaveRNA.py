@@ -207,7 +207,7 @@ def train_and_save_svm(train_data_path, model_name, feature_set_name, progress_t
         progress_tracker.update(3, f"Training SVM model for {model_name}")
 
     # Train SVM
-    svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
+    svm = SVC(C=1, gamma='scale', kernel='poly', degree=3, coef0=1.0, probability=True, random_state=42)
     svm.fit(X, y)
 
     # Save model
@@ -235,7 +235,7 @@ def perform_cross_validation(X, y, model_name, feature_set_name, progress_tracke
     step_start_time = time.time()
     # Suppressed cross-validation output
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    svm = SVC(C=10, gamma='auto', kernel='rbf', probability=True, random_state=42)
+    svm = SVC(C=1, gamma='scale', kernel='poly', degree=3, coef0=1.0, probability=True, random_state=42)
 
     scores = {'accuracy': [], 'precision': [], 'recall': [], 'f1': []}
     proba_results = []  # Store predict_proba results for each fold
@@ -451,7 +451,7 @@ def train(args):
             # Step 10: Prepare feature sets
             step_start = time.time()
             progress.update(1, "Preparing feature sets")
-            feature_set = ['Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'E_3', 'seedNumber_3', 'pumin1_4d', 'pumin5_8d']
+            feature_set = ['E_1', 'Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'seedNumber_3', 'pumin1_4u', 'pumin1_4d']
             df_train = pd.read_csv(merged_train_file)
             feature_set_with_y = feature_set + ['ML_training_score']
             feature_set_file = f"{model_name}_ML_train_feature_set.csv"
