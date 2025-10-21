@@ -2,8 +2,11 @@
 # predict_DNAzymes_multi.R
 #
 # Author: Reyhaneh Tavakoli Koopaei
-# Updated version: ensures consistent energy sign, proper model thresholding,
-# and prevents mismatch between prob_multiple and pred_multiple.
+# Fully updated version:
+#   - Adds reliability scores for predictions
+#   - Computes and exports Accuracy, Precision, Recall, F1
+#   - Always saves metrics summary using training data
+#   - Exports per-FASTA predictions CSV
 
 suppressPackageStartupMessages({
   library(tools)
@@ -61,7 +64,7 @@ cat("Training models from:", train_table, "\n")
 
 DZ <- read.table(train_table, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
-# Ensure numeric energies (negative values are expected)
+# Ensure numeric energies
 DZ$Energy   <- as.numeric(DZ$Energy)
 DZ$Dimer    <- as.numeric(DZ$Dimer)
 DZ$Internal <- as.numeric(DZ$Internal)
@@ -109,6 +112,22 @@ compute_internal <- function(seq) {
   return(as.numeric(num[1]))
 }
 
+# --- Metrics helper function ---
+calc_metrics <- function(true, pred) {
+  TP <- sum(true == 1 & pred == 1)
+  TN <- sum(true == 0 & pred == 0)
+  FP <- sum(true == 0 & pred == 1)
+  FN <- sum(true == 1 & pred == 0)
+  
+  acc <- (TP + TN) / (TP + TN + FP + FN)
+  prec <- ifelse(TP + FP > 0, TP / (TP + FP), NA)
+  rec <- ifelse(TP + FN > 0, TP / (TP + FN), NA)
+  f1 <- ifelse(!is.na(prec) && !is.na(rec) && (prec + rec) > 0,
+               2 * prec * rec / (prec + rec), NA)
+  
+  return(data.frame(Accuracy = acc, Precision = prec, Recall = rec, F1 = f1))
+}
+
 # --- Process FASTA files ---
 fasta_files <- list.files(fasta_dir, pattern = "\\.fa$|\\.fasta$", full.names = TRUE, ignore.case = TRUE)
 if (length(fasta_files) == 0) stop("No FASTA files found in directory.")
@@ -145,24 +164,36 @@ for (fasta in fasta_files) {
   cand$Dimer <- sapply(toupper(gsub("T", "U", gsub("[^ACGTUacgtu]", "", cand$DNAzyme))), compute_dimer)
   cand$Internal <- sapply(toupper(gsub("T", "U", gsub("[^ACGTUacgtu]", "", cand$DNAzyme))), compute_internal)
   
-  # Remove NA rows before prediction
   cand <- cand[complete.cases(cand[, c("Energy", "Dimer", "Internal")]), ]
   
   # --- Prediction ---
   cand$prob_single <- predict(fit_single, newdata = cand, type = "response")
   cand$prob_multiple <- predict(fit_multiple, newdata = cand, type = "response")
   
-  # Use 0.5 threshold; ensure numeric type
-  cand$pred_single <- ifelse(as.numeric(cand$prob_single) > 0.5, 1, 0)
-  cand$pred_multiple <- ifelse(as.numeric(cand$prob_multiple) > 0.5, 1, 0)
+  cand$pred_single <- ifelse(cand$prob_single > 0.5, 1, 0)
+  cand$pred_multiple <- ifelse(cand$prob_multiple > 0.5, 1, 0)
+  
+  # --- Reliability score ---
+  cand$reliability_single <- abs(cand$prob_single - 0.5) * 2
+  cand$reliability_multiple <- abs(cand$prob_multiple - 0.5) * 2
   
   cat("Summary of multiple model predictions:\n")
   print(table(cand$pred_multiple))
   
-  # --- Save ---
+  # --- Save predictions ---
   pred_file <- paste0(out_prefix, "_", fasta_name, "_predictions.csv")
   write.csv(cand, file = pred_file, row.names = FALSE, na = "")
   cat("Predictions saved to", pred_file, "\n")
 }
 
+# --- Always compute metrics using training data ---
+DZ$pred_train <- ifelse(predict(fit_multiple, newdata = DZ, type = "response") > 0.5, 1, 0)
+metrics_train <- calc_metrics(DZ$good40, DZ$pred_train)
+metrics_train$File <- "Training_data"
+
+metrics_file <- paste0(out_prefix, "_metrics_summary.csv")
+write.csv(metrics_train, file = metrics_file, row.names = FALSE)
+cat("\nMetrics summary saved to", metrics_file, "\n")
+
 cat("\nAll FASTA files processed successfully.\n")
+
