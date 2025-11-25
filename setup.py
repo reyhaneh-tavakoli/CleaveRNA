@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script for CleaveRNA - RNA cleavage site prediction tool
+Computational tool for scoring candidate DNAzyme cleavage sites
 """
 
 from setuptools import setup, find_packages
@@ -17,12 +17,12 @@ except FileNotFoundError:
 setup(
     name="CleaveRNA",
     version="1.0.0",
-    author="reytakop",
-    author_email="your.email@example.com",  # Replace with your actual email
-    description="RNA cleavage site prediction tool using machine learning and structural analysis",
+    author="reyhaneh tavakoli and contributors",
+    author_email="rey.ta.kop.biochem@gmail.com",
+    description="Advanced machine learning-based computational tool for scoring candidate DNAzyme cleavage sites",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/reytakop/CleaveRNA",
+    url="https://github.com/reyhaneh-tavakoli/CleaveRNA",
     packages=find_packages(),
     license="MIT License with Attribution Requirements",
     classifiers=[
@@ -65,10 +65,10 @@ setup(
     package_data={
         "CleaveRNA": ["*.md", "*.txt"],
     },
-    keywords="RNA, cleavage, prediction, machine learning, bioinformatics, structural biology",
+    keywords="DNAzyme, cleavage sites, prediction, machine learning, bioinformatics, RNA",
     project_urls={
-        "Bug Reports": "https://github.com/reytakop/CleaveRNA/issues",
-        "Source": "https://github.com/reytakop/CleaveRNA",
-        "Documentation": "https://github.com/reytakop/CleaveRNA/wiki",
+        "Bug Reports": "https://github.com/reyhaneh-tavakoli/CleaveRNA/issues",
+        "Source": "https://github.com/reyhaneh-tavakoli/CleaveRNA",
+        "Documentation": "https://github.com/reyhaneh-tavakoli/CleaveRNA/wiki",
     },
 )

@@ -1,6 +1,6 @@
 The MIT License (MIT) with Attribution Requirements
 
-Copyright (c) 2025 reytakop and contributors
+Copyright (c) 2025 reyhaneh-tavakoli and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ When using CleaveRNA in your research or applications, please cite:
 
 [Author names]. (2025). CleaveRNA: Machine Learning-Based Prediction of 
 DNAzyme Cleavage Sites in RNA Sequences. GitHub repository: 
-https://github.com/reytakop/CleaveRNA
+https://github.com/reyhaneh-tavakoli/CleaveRNA
 
 This software builds upon:
 - ViennaRNA Package for RNA structure prediction
