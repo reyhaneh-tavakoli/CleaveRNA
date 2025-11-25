@@ -3,7 +3,10 @@ import argparse
 import os
 import sys
 import traceback
-from Feature import main as feature_main
+try:
+    from .Feature import main as feature_main
+except ImportError:
+    from Feature import main as feature_main
 import pandas as pd
 import numpy as np
 from matplotlib import cm
@@ -70,10 +73,10 @@ def predict_execution_time(args):
     base_time = 10  # Base processing time in seconds
     
     # Factor in the number of target files
-    if args.targets:
-        file_factor = len(args.targets) * 5  # 5 seconds per target file
-    elif args.training_mode:
-        file_factor = len(args.training_mode) * 8  # 8 seconds per training file
+    if args.target_files_prediction:
+        file_factor = len(args.target_files_prediction) * 5  # 5 seconds per target file
+    elif args.target_files_training:
+        file_factor = len(args.target_files_training) * 8  # 8 seconds per training file
     else:
         file_factor = 5
     
@@ -85,12 +88,12 @@ def predict_execution_time(args):
         'specific_query': 0.8
     }
     
-    mode_factor = feature_complexity.get(args.feature_mode, 1.0)
+    mode_factor = feature_complexity.get(args.prediction_mode, 1.0)
     
     # Factor in prediction vs training mode
-    if args.prediction_mode:
+    if args.training_file:
         mode_time = 20  # Prediction mode takes longer
-    elif args.training_mode:
+    elif args.target_files_training:
         mode_time = 15  # Training mode
     else:
         mode_time = 10
@@ -280,9 +283,9 @@ def train(args):
     print(f"⏱️ Estimated execution time: {format_time(estimated_time)}")
     
     # Determine total steps based on mode
-    if args.prediction_mode:
+    if args.training_file:
         total_steps = 25  # More steps for prediction mode
-    elif args.training_mode:
+    elif args.target_files_training:
         total_steps = 15  # Fewer steps for train mode
     else:
         total_steps = 10
@@ -299,14 +302,14 @@ def train(args):
         progress.update(1, "Setting up output directory")
         progress.step_success("Output directory setup", time.time() - step_start)
 
-        # Skip initial Feature.py run for training_mode as it handles its own feature generation
-        if not args.training_mode:
+        # Skip initial Feature.py run for target_files_training as it handles its own feature generation
+        if not args.target_files_training:
             # Step 2: Run Feature.py
             step_start = time.time()
             print("🔧 Running Feature.py to generate 'all_generated_merged_num.csv'...")
-            targets_arg = ','.join(args.targets) if args.targets else ''
+            targets_arg = ','.join(args.target_files_prediction) if args.target_files_prediction else ''
             feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
-            feature_command = f"python3 {feature_script_path} --targets {targets_arg} --params {args.params} --feature_mode {args.feature_mode} --output_dir {args.output_dir}"
+            feature_command = f"python3 {feature_script_path} --targets {targets_arg} --params {args.params} --prediction_mode {args.prediction_mode} --output_dir {args.output_dir}"
             
             progress.update(2, "Executing Feature.py")
             try:
@@ -332,10 +335,10 @@ def train(args):
                 print(f"❌ Error: 'all_generated_merged_num.csv' was not generated after multiple attempts.")
                 sys.exit(1)
 
-        if args.prediction_mode:
+        if args.training_file:
             model_name = args.model_name
-            target_file = args.ML_training_score
-            default_merged_file = args.prediction_mode
+            target_file = args.training_scores
+            default_merged_file = args.training_file
 
             # Step 4: Validate required files
             step_start = time.time()
@@ -510,7 +513,7 @@ def train(args):
             if 'target_file' in df_all_generated.columns:
                 df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
             else:
-                fasta_targets = args.targets if isinstance(args.targets, list) else args.targets.split(',')
+                fasta_targets = args.target_files_prediction if isinstance(args.target_files_prediction, list) else args.target_files_prediction
                 df_all_generated['target_file'] = None
                 if len(fasta_targets) == len(df_all_generated):
                     df_all_generated['target_file'] = fasta_targets
@@ -644,16 +647,16 @@ def train(args):
                 report_file_status(feature_set_predicted_path, "Sorted CleaveRNA output")
             progress.step_success("Final result processing", time.time() - step_start)
 
-        elif args.training_mode:
+        elif args.target_files_training:
             model_name = args.model_name
-            user_train_files = args.training_mode
+            user_train_files = args.target_files_training
             
             # Step 4: Generate user features
             step_start = time.time()
             progress.update(3, "Generating user training features")
             feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
             user_merged_file = os.path.join(args.output_dir, f"{model_name}_user_merged_num.csv")
-            user_train_command = f"python3 {feature_script_path} --targets {','.join(user_train_files)} --params {args.params} --feature_mode default --output_dir {args.output_dir}"
+            user_train_command = f"python3 {feature_script_path} --targets {','.join(user_train_files)} --params {args.params} --prediction_mode default --output_dir {args.output_dir}"
             try:
                 subprocess.run(user_train_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 progress.step_success("User feature generation", time.time() - step_start)
@@ -674,7 +677,7 @@ def train(args):
                 print(f"❌ Error: {default_generated_file} not found after Feature.py run.")
                 sys.exit(1)
         else:
-            print("❌ Error: Either --prediction_mode or --training_mode must be provided.")
+            print("❌ Error: Either --training_file or --target_files_training must be provided.")
             sys.exit(1)
 
         # Cleanup intermediate files
@@ -693,7 +696,7 @@ def train(args):
         }
         
         # Add training mode specific files to keep
-        if args.training_mode:
+        if args.target_files_training:
             keep_files.add(f"{model_name}_user_merged_num.csv")
         
         # Input files to protect (never remove these)
@@ -702,19 +705,19 @@ def train(args):
         # Protect user-provided files
         if args.params:
             protected_input_files.add(os.path.basename(args.params))
-        if args.ML_training_score:
-            protected_input_files.add(os.path.basename(args.ML_training_score))
-        if args.specific_csv:
-            protected_input_files.add(os.path.basename(args.specific_csv))
+        if args.training_scores:
+            protected_input_files.add(os.path.basename(args.training_scores))
+        if args.specific_query_input:
+            protected_input_files.add(os.path.basename(args.specific_query_input))
         if args.prediction_mode:
             protected_input_files.add(os.path.basename(args.prediction_mode))
         
         # Protect FASTA input files
-        if args.targets:
-            for target in args.targets:
+        if args.target_files_prediction:
+            for target in args.target_files_prediction:
                 protected_input_files.add(os.path.basename(target))
-        if args.training_mode:
-            for train_file in args.training_mode:
+        if args.target_files_training:
+            for train_file in args.target_files_training:
                 protected_input_files.add(os.path.basename(train_file))
         
         # List of all potential intermediate files to remove
@@ -891,48 +894,192 @@ def main():
         print("🧬 CleaveRNA Analysis Tool 🧬")
         print("="*60)
         
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--targets', nargs='+', help="Path to one or more FASTA files (required for --prediction_mode)")
-        parser.add_argument('--params', help="Path to the CSV file containing LA, RA, CS, temperature, and core")
-        parser.add_argument('--feature_mode', choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
-        parser.add_argument('--prediction_mode', help="CSV file for prediction mode")
-        parser.add_argument('--training_mode', nargs='+', help="FASTA file(s) for user train mode")
-        parser.add_argument('--model_name', required=True, help="Model name for output file naming")
-        parser.add_argument('--output_dir', help="Directory to save all outputs", default=os.getcwd())
-        parser.add_argument('--specific_csv', help="CSV file for specific_query mode", default=None)
-        parser.add_argument('--ML_training_score', help="CSV file containing target labels for ML training (required for --prediction_mode)")
+        parser = argparse.ArgumentParser(
+            prog='CleaveRNA',
+            description="""
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        🧬 CleaveRNA Analysis Tool 🧬                        │
+│                                                                             │
+│  Advanced machine learning-based computational tool for scoring candidate   │
+│  DNAzyme cleavage sites in substrate RNA sequences using structural and     │
+│  thermodynamic features.                                                    │
+│                                                                             │
+│  Features:                                                                  │
+│  • Machine Learning Prediction Models                                       │
+│  • RNA Secondary Structure Analysis                                         │
+│  • Thermodynamic Feature Extraction                                         │
+│  • Multiple Prediction Modes                                                │
+│  • Cross-validation and Performance Metrics                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+            """,
+            epilog="""
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              📋 USAGE EXAMPLES                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+🎯 TRAINING MODE - Generate features for model training:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ cleaverna --target_files_training train1.fasta train2.fasta \\          │
+   │           --params parameters.csv --prediction_mode default \\          │
+   │           --model_name my_model --output_dir results/                   │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+🔮 PREDICTION MODE - Standard cleavage site prediction:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ cleaverna --target_files_prediction seq1.fasta seq2.fasta \\            │
+   │           --params parameters.csv --prediction_mode default \\          │
+   │           --training_file training_data.csv \\                          │
+   │           --training_scores labels.csv \\                               │
+   │           --model_name prediction_model --output_dir results/           │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+🎯 TARGET SCREENING - Screen specific cleavage sites:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ cleaverna --target_files_prediction target.fasta \\                     │
+   │           --params screen_params.csv --prediction_mode target_screen \\ │
+   │           --training_file training_data.csv \\                          │
+   │           --training_scores labels.csv \\                               │
+   │           --model_name screen_model --output_dir screening_results/     │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+🔍 TARGET CHECK - Validate cleavage sites in specific regions:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ cleaverna --target_files_prediction target.fasta \\                     │
+   │           --params check_params.csv --prediction_mode target_check \\   │
+   │           --training_file training_data.csv \\                          │
+   │           --training_scores labels.csv \\                               │
+   │           --model_name check_model --output_dir check_results/          │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+⚡ SPECIFIC QUERY - Custom DNAzyme sequence analysis:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ cleaverna --target_files_prediction target.fasta \\                     │
+   │           --params query_params.csv --prediction_mode specific_query \\ │
+   │           --specific_query_input custom_queries.csv \\                  │
+   │           --training_file training_data.csv \\                          │
+   │           --training_scores labels.csv \\                               │
+   │           --model_name query_model --output_dir query_results/          │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            🔗 MORE INFORMATION                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📚 Documentation: https://github.com/reytakop/CleaveRNA
+💡 Issues & Support: https://github.com/reytakop/CleaveRNA/issues
+📧 Contact: [Your contact information]
+
+            """,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            add_help=False
+        )
+        
+        # Add custom help argument with improved formatting
+        parser.add_argument(
+            '-h', '--help',
+            action='help',
+            help='Show this help message and exit'
+        )
+        
+        # Required Arguments Group
+        required_group = parser.add_argument_group('🔴 REQUIRED ARGUMENTS')
+        required_group.add_argument(
+            '--model_name', 
+            required=True, 
+            metavar='NAME',
+            help='Model identifier and output file prefix (e.g., "my_experiment")'
+        )
+        
+        # Input Files Group  
+        input_group = parser.add_argument_group('📁 INPUT FILES')
+        input_group.add_argument(
+            '--target_files_prediction', 
+            nargs='+', 
+            metavar='FASTA',
+            help='Target RNA sequence files in FASTA format (required for prediction mode)'
+        )
+        input_group.add_argument(
+            '--target_files_training', 
+            nargs='+', 
+            metavar='FASTA',
+            help='Training RNA sequence files in FASTA format (required for training mode)'
+        )
+        input_group.add_argument(
+            '--params', 
+            metavar='CSV',
+            help='Parameters file with columns: LA, RA, CS, Tem, CA'
+        )
+        input_group.add_argument(
+            '--training_file', 
+            metavar='CSV',
+            help='Training data feature matrix (mutually exclusive with --target_files_training)'
+        )
+        input_group.add_argument(
+            '--training_scores', 
+            metavar='CSV',
+            help='Training target labels/scores (required with --training_file)'
+        )
+        input_group.add_argument(
+            '--specific_query_input', 
+            metavar='CSV',
+            help='Custom query parameters for specific_query mode',
+            default=None
+        )
+        
+        # Analysis Options Group
+        analysis_group = parser.add_argument_group('🔬 ANALYSIS OPTIONS')
+        analysis_group.add_argument(
+            '--prediction_mode', 
+            choices=['default', 'target_screen', 'target_check', 'specific_query'],
+            metavar='MODE',
+            help='''Analysis mode selection:
+  • default        : Standard cleavage site prediction
+  • target_screen  : Screen custom cleavage sites
+  • target_check   : Validate sites in specific regions  
+  • specific_query : Analyze custom DNAzyme sequences'''
+        )
+        
+        # Output Options Group
+        output_group = parser.add_argument_group('📤 OUTPUT OPTIONS') 
+        output_group.add_argument(
+            '--output_dir', 
+            metavar='DIR',
+            help='Output directory for results (default: current directory)', 
+            default=os.getcwd()
+        )
         args = parser.parse_args()
 
         # Show initial configuration
         print(f"🔧 Configuration loaded:")
         print(f"   Model name: {args.model_name}")
-        print(f"   Feature mode: {args.feature_mode}")
-        if args.prediction_mode:
+        print(f"   Prediction mode: {args.prediction_mode}")
+        if args.training_file:
             print(f"   Mode: Prediction")
-            print(f"   Targets: {len(args.targets) if args.targets else 0} files")
-        elif args.training_mode:
+            print(f"   Targets: {len(args.target_files_prediction) if args.target_files_prediction else 0} files")
+        elif args.target_files_training:
             print(f"   Mode: Training")
-            print(f"   Training files: {len(args.training_mode)} files")
+            print(f"   Training files: {len(args.target_files_training)} files")
         print(f"   Output directory: {args.output_dir}")
 
         # Validate that one of the train modes is specified
-        if not args.prediction_mode and not args.training_mode:
-            print("❌ Error: Either --prediction_mode or --training_mode must be provided.")
+        if not args.training_file and not args.target_files_training:
+            print("❌ Error: Either --training_file or --target_files_training must be provided.")
             sys.exit(1)
 
-        # Validate ML_training_score is provided for prediction_mode
-        if args.prediction_mode and not args.ML_training_score:
-            print("❌ Error: --ML_training_score is required when using --prediction_mode.")
+        # Validate ML_training_score is provided for training_file mode
+        if args.training_file and not args.training_scores:
+            print("❌ Error: --training_scores is required when using --training_file.")
             sys.exit(1)
 
-        # Validate targets is provided for prediction_mode
-        if args.prediction_mode and not args.targets:
-            print("❌ Error: --targets is required when using --prediction_mode.")
+        # Validate targets is provided for training_file mode
+        if args.training_file and not args.target_files_prediction:
+            print("❌ Error: --target_files_prediction is required when using --training_file.")
             sys.exit(1)
 
-        # Validate each target file in the list (only for prediction_mode)
-        if args.targets:
-            for target in args.targets:
+        # Validate each target file in the list (only for training_file mode)
+        if args.target_files_prediction:
+            for target in args.target_files_prediction:
                 if not os.path.exists(target):
                     print(f"❌ Error: Target file '{target}' does not exist.")
                     sys.exit(1)
@@ -941,8 +1088,8 @@ def main():
             print(f"❌ Error: Parameters file '{args.params}' does not exist.")
             sys.exit(1)
 
-        if args.feature_mode == 'specific_query' and args.specific_csv and not os.path.exists(args.specific_csv):
-            print(f"❌ Error: Specific CSV file '{args.specific_csv}' does not exist.")
+        if args.prediction_mode == 'specific_query' and args.specific_query_input and not os.path.exists(args.specific_query_input):
+            print(f"❌ Error: Specific CSV file '{args.specific_query_input}' does not exist.")
             sys.exit(1)
 
         # Create parameters.cfg if it doesn't exist
@@ -963,11 +1110,11 @@ if __name__ == "__main__":
 
 # USAGE NOTE:
 # Prediction mode - uses pre-existing training data for prediction:
-#   python3 CleaveRNA.py --targets <fasta1> <fasta2> ... --params <params.csv> --feature_mode default --prediction_mode <train_csv_file> --model_name <model_name> --ML_training_score <target.csv> --output_dir <outdir>
+#   python3 CleaveRNA.py --target_files_prediction <fasta1> <fasta2> ... --params <params.csv> --prediction_mode default --training_file <train_csv_file> --model_name <model_name> --training_scores <target.csv> --output_dir <outdir>
 #
 # Train mode - generates training features from user FASTA files:
-#   python3 CleaveRNA.py --training_mode <train1.fasta> <train2.fasta> ... --feature_mode default --output_dir <outdir> --model_name <model_name>
+#   python3 CleaveRNA.py --target_files_training <train1.fasta> <train2.fasta> ... --prediction_mode default --output_dir <outdir> --model_name <model_name>
 #   This mode generates only {model_name}_user_merged_num.csv for training feature extraction.
-#   Note: feature_mode is always 'default' for training_mode.
+#   Note: prediction_mode is always 'default' for target_files_training.
 #
 # The output files will be in <outdir>.

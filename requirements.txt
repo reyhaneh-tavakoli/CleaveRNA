@@ -1,5 +1,43 @@
+# CleaveRNA Requirements
+# Core dependencies for RNA cleavage site prediction tool
+
+# Data manipulation and analysis
 pandas>=1.3.0
-numpy>=1.21.0
+numpy>=1.20.0
+
+# Machine learning
 scikit-learn>=1.0.0
+
+# Data visualization
 matplotlib>=3.3.0
-tqdm>=4.62.0
+
+# Progress bars and UI
+tqdm>=4.60.0
+
+# Command line argument parsing (built-in with Python 3.2+, but included for clarity)
+argparse
+
+# Development and testing dependencies (optional)
+# Uncomment the following lines if you want development tools:
+# pytest>=6.0
+# pytest-cov
+# black
+# flake8
+
+# External system dependencies (install separately):
+# - ViennaRNA package (RNAfold, RNAplfold commands)
+# - IntaRNA (for RNA-RNA interaction prediction)
+# 
+# Installation instructions for external dependencies:
+# 
+# ViennaRNA (Ubuntu/Debian):
+# sudo apt-get install vienna-rna
+# 
+# ViennaRNA (conda):
+# conda install -c bioconda viennarna
+# 
+# IntaRNA (conda):
+# conda install -c bioconda intarna
+# 
+# IntaRNA (from source):
+# https://github.com/BackofenLab/IntaRNA
