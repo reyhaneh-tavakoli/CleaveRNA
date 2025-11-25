@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-CleaveRNA - RNA cleavage site prediction tool
+Computational tool for scoring candidate cleavage sites of DNAzyme
 
-This package provides tools for predicting RNA cleavage sites using machine learning
-and structural analysis. It includes feature extraction, model training, and prediction
-capabilities.
+Advanced machine learning-based computational tool for scoring candidate
+cleavage sites of DNAzyme in substrate RNA sequences using structural and
+thermodynamic features.
 
 Modules:
     CleaveRNA: Main prediction and training module
-    Feature: Feature extraction and processing module
+    Feature: Feature generation and processing module
 
 Command-line tools:
     cleaverna: Main CleaveRNA analysis tool
@@ -16,9 +16,9 @@ Command-line tools:
 """
 
 __version__ = "1.0.0"
-__author__ = "reytakop"
-__email__ = "your.email@example.com"  # Replace with your actual email
-__description__ = "RNA cleavage site prediction tool using machine learning and structural analysis"
+__author__ = "reyhaneh tavakoli and contributors"
+__email__ = "rey.ta.kop.biochem@gmail.com"
+__description__ = "Advanced machine learning-based computational tool for scoring candidate DNAzyme cleavage sites in substrate RNA sequences using structural and thermodynamic features."
 
 # Import main classes and functions for easy access
 try:
@@ -113,10 +113,10 @@ def get_info():
 
 # Banner for command-line tools
 BANNER = f"""
-╔══════════════════════════════════════════════════════════════╗
-║                        CleaveRNA v{__version__}                        ║
-║            RNA Cleavage Site Prediction Tool                ║
-║                                                              ║
-║    🧬 Machine Learning + Structural Analysis 🧬             ║
-╚══════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════╗
+║                        CleaveRNA v{__version__}                    ║
+║                    DNAzyme Cleavage Site Prediction Tool           ║
+║                                                                    ║
+║   🧬 Machine Learning based scoring cleavage sites of DNAzyme 🧬   ║
+╚════════════════════════════════════════════════════════════════════╝
 """
