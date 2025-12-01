@@ -11,28 +11,28 @@ unset __conda_setup
 conda activate intarna-env
 
 # Define directories
-script_path="../../../CleaveRNA.py"  # Path to CleaveRNA.py
+script_path="../../../../CleaveRNA/CleaveRNA.py"  # Path to CleaveRNA.py
 
 # Define the input files and parameters
-TARGETS="HPV.fasta BCL-1.fasta BCL-2.fasta BCL-3.fasta BCL-4.fasta BCL-5.fasta" # Space-separated FASTA files
+TARGET_FILES_PREDICTION="HPV.fasta BCL-1.fasta BCL-2.fasta BCL-3.fasta BCL-4.fasta BCL-5.fasta" # Space-separated FASTA files
 PARAMS="test_default.csv"
-DEFAULT_TRAIN_FILE="SARS_user_merged_num.csv"  # The actual default train CSV file
+TRAINING_FILE="SARS_user_merged_num.csv"  # The training data CSV file
 MODEL_NAME="HPBC"
-ML_TRAINING_SCORE="SARS_target.csv"
+TRAINING_SCORES="SARS_target.csv"
 
 # Record the start time
 start_time=$(date)
 
-# prwdiction mode
+# prediction mode
 echo "Running in prediction mode..."
 output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
-  --targets $TARGETS \
+  --target_files_prediction $TARGET_FILES_PREDICTION \
   --params $PARAMS \
-  --feature_mode default \
-  --prediction_mode $DEFAULT_TRAIN_FILE \
+  --prediction_mode default \
+  --training_file $TRAINING_FILE \
   --model_name $MODEL_NAME \
-  --ML_training_score $ML_TRAINING_SCORE \
+  --training_scores $TRAINING_SCORES \
   --output_dir "$output_dir"
 
 # Record the end time

@@ -11,28 +11,31 @@ unset __conda_setup
 conda activate intarna-env
 
 # Define directories
-script_path="../../../CleaveRNA.py"  # Path to CleaveRNA.py
+script_path="../../../../CleaveRNA/CleaveRNA.py"  # Path to CleaveRNA.py
 
 # Define the input files and parameters
-TARGETS="target_1.fasta target_2.fasta"  # Space-separated FASTA files
+TARGET_FILES="target_1.fasta target_2.fasta"  # Space-separated FASTA files
 PARAMS="test_specific_query.csv"
-PREDICTION_MODE="HPBC_user_merged_num.csv"  # The actual default train CSV file
+TRAINING_FILE="HPBC_user_merged_num.csv"  # The training feature matrix
 MODEL_NAME="HPBC"
-ML_Training_score="HPBC_target.csv"
+TRAINING_SCORES="HPBC_target.csv"  # Training target labels/scores
+PREDICTION_MODE="specific_query"  # Analysis mode
+SPECIFIC_QUERY_INPUT="test_specific_query.csv"  # Custom query parameters for specific_query mode
 
 # Record the start time
 start_time=$(date)
 
-# Default mode
-echo "Running in prediction mode..."
+# Specific query prediction mode
+echo "Running in specific_query prediction mode..."
 output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
-  --targets $TARGETS \
+  --target_files_prediction $TARGET_FILES \
   --params $PARAMS \
-  --feature_mode specific_query \
   --prediction_mode $PREDICTION_MODE \
+  --training_file $TRAINING_FILE \
+  --training_scores $TRAINING_SCORES \
+  --specific_query_input $SPECIFIC_QUERY_INPUT \
   --model_name $MODEL_NAME \
-  --ML_training_score $ML_Training_score\
   --output_dir "$output_dir"
 
 # Record the end time

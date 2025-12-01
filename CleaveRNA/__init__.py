@@ -12,7 +12,7 @@ Modules:
 
 Command-line tools:
     cleaverna: Main CleaveRNA analysis tool
-    cleaverna-feature: Feature extraction tool
+    feature: Feature extraction tool
 """
 
 __version__ = "1.0.0"
