@@ -1,9 +1,4 @@
-LICENSE.txt
-README.md
 setup.py
-CleaveRNA/CleaveRNA.py
-CleaveRNA/Feature.py
-CleaveRNA/__init__.py
 CleaveRNA.egg-info/PKG-INFO
 CleaveRNA.egg-info/SOURCES.txt
 CleaveRNA.egg-info/dependency_links.txt

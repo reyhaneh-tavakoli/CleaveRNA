@@ -5,6 +5,8 @@ matplotlib>=3.3.0
 tqdm>=4.60.0
 argparse
 
+[conda]
+
 [dev]
 pytest>=6.0
 pytest-cov

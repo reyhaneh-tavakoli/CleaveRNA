@@ -11,6 +11,41 @@ from datetime import datetime
 import glob
 import numpy as np
 import contextlib
+import shutil
+
+def check_dependencies():
+    """Check if required external tools are available"""
+    missing_tools = []
+    
+    # Check for RNAplfold
+    if not shutil.which('RNAplfold'):
+        missing_tools.append('RNAplfold (ViennaRNA package)')
+    
+    # Check for IntaRNA
+    if not shutil.which('IntaRNA'):
+        missing_tools.append('IntaRNA')
+    
+    if missing_tools:
+        print("\n❌ Missing required dependencies:")
+        for tool in missing_tools:
+            print(f"   • {tool}")
+        
+        print("\n📋 Installation instructions:")
+        print("\n🔹 Option 1 - Install via conda (recommended):")
+        print("   conda install -c bioconda viennarna intarna")
+        
+        print("\n🔹 Option 2 - Use existing conda environment:")
+        print("   conda activate intarna-env  # or your environment with these tools")
+        
+        print("\n🔹 Option 3 - Install from source:")
+        print("   ViennaRNA: https://www.tbi.univie.ac.at/RNA/")
+        print("   IntaRNA: https://github.com/BackofenLab/IntaRNA")
+        
+        print("\n💡 After installation, verify with:")
+        print("   RNAplfold --help")
+        print("   IntaRNA --help")
+        
+        raise SystemExit(1)
 
 def convert_t_to_u(sequence):
     return sequence.replace('T', 'U')
@@ -126,8 +161,8 @@ def process_specific_query(csv_file, output_dir):
         
         lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), output_dir, temperature)
         
-        # Use parameters.cfg for IntaRNA, from the output directory
-        param_file = os.path.join(output_dir, 'parameters.cfg')
+        # Use parameters.cfg for IntaRNA, from the main output directory
+        param_file = 'parameters.cfg'
         process_intarna_queries(target_file, query_file, lunp_file, param_file, len(LA_seq), len(RA_seq), output_prefix, CS)
         
         # Post-process the features
@@ -275,7 +310,6 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
                         continue
 
                     data = pd.read_csv(file)
-                    print(f"File content preview:\n{data.head()}\n")  # Debug statement
 
                     if data.empty:
                         print(f"Warning: File {file} contains no data. Skipping.")
@@ -294,8 +328,7 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
                 print(f"File not found: {file}")
 
     if not merged_data.empty:
-        print(f"✓ Merged numerical columns processed successfully.")
-        print(f"Merged data preview:\n{merged_data.head()}\n")
+        print("✓ Merged numerical columns processed successfully.")
     else:
         print("✗ No numerical columns found to merge.")
 
@@ -316,7 +349,6 @@ def merge_numerical_columns(output_file=None, output_prefixes=None):
 
     numeric_columns.to_csv(output_file, index=False)
     print(f"✓ Saved id2, seq2, and numerical columns to {output_file}")
-    print("Numerical data sample:\n", numeric_columns.head())
 
 def post_process_features(target_file, output_dir):
     """Perform additional feature processing after Feature.py completes"""
@@ -336,7 +368,6 @@ def post_process_features(target_file, output_dir):
         print(f"✓ Reading unpaired probabilities from {pu_file}...")
         pu = pd.read_csv(pu_file, sep="\t", skiprows=2, header=None)
         pu.columns = ["i"] + [f"l{i}" for i in range(1, len(pu.columns))]
-        print("Unpaired data sample:\n", pu.head())
 
         # Verify we have position data
         if len(pu) == 0:
@@ -358,7 +389,6 @@ def post_process_features(target_file, output_dir):
 
             print(f"✓ Processing {result_file}...")
             df = pd.read_csv(result_file)
-            print(f"Result file {i} sample:\n{df.head()}")
 
             # Verify required columns exist
             required_cols = ['id2', 'seq2', 'seedE']
@@ -392,7 +422,6 @@ def post_process_features(target_file, output_dir):
                                       how='outer')
         merged_data = merged_data.rename(columns={'id2_1': 'id2', 'seq2_1': 'seq2'})
         print("Merged data columns:", merged_data.columns.tolist())
-        print("Merged data sample:\n", merged_data.head())
 
         # Fill NA values
         na_defaults = {
@@ -444,7 +473,6 @@ def post_process_features(target_file, output_dir):
         full_output_path = os.path.join(output_dir, f"{base_filename}_generated_merged.csv")
         merged_data.to_csv(full_output_path, index=False)
         print(f"✓ Saved full merged data to {full_output_path}")
-        print("Full data sample:\n", merged_data.head())
 
         numeric_columns = merged_data.select_dtypes(include=['number'])
 
@@ -461,7 +489,6 @@ def post_process_features(target_file, output_dir):
             num_output_path = os.path.join(output_dir, "generated_merged_num.csv")
             numeric_with_id.to_csv(num_output_path, index=False)
             print(f"✓ Saved id2, seq2, and numerical columns to {num_output_path}")
-            print("Numerical data sample:\n", numeric_with_id.head())
         else:
             print("✗ Warning: 'id2' column not found in merged data")
 
@@ -513,6 +540,11 @@ def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files
         return
 
     # Save the merged data to the final output file
+    # Ensure the directory exists before saving
+    output_dir_path = os.path.dirname(final_output_file)
+    if output_dir_path and not os.path.exists(output_dir_path):
+        os.makedirs(output_dir_path, exist_ok=True)
+        
     # Remove any duplicate 'id2.1', 'seq2.1', 'target_file.1' and similar columns before saving
     cols_to_remove = [col for col in merged_data.columns if col in ['id2.1', 'seq2.1', 'target_file.1'] or 
                       col.startswith('id2.') or col.startswith('seq2.') or col.startswith('target_file.')]
@@ -536,37 +568,44 @@ def main(args=None):
         parser = argparse.ArgumentParser()
         parser.add_argument('--targets', required=True, help="Path to a directory or a comma-separated list of FASTA files")
         parser.add_argument('--params', required=True, help="Path to the CSV file containing parameters")
-        parser.add_argument('--feature_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
+        parser.add_argument('--prediction_mode', required=True, choices=['default', 'target_screen', 'target_check', 'specific_query'], help="Mode of operation")
         parser.add_argument('--output_dir', required=False, default='.', help="Directory to save all outputs")
+        parser.add_argument('--skip-deps-check', action='store_true', help="Skip dependency checking (for testing)")
         args = parser.parse_args()
         
         # Make params file also serve as specific_csv for specific_query mode
-        if args.feature_mode == 'specific_query':
+        if args.prediction_mode == 'specific_query':
             args.specific_csv = args.params
+
+    # Check dependencies unless explicitly skipped
+    if not getattr(args, 'skip_deps_check', False):
+        print("🔍 Checking required dependencies...")
+        check_dependencies()
+        print("✅ All dependencies found!")
 
     params_df = pd.read_csv(args.params)
 
     # Initialize required_columns to avoid UnboundLocalError
     required_columns = set()
 
-    if args.feature_mode == 'specific_query':
+    if args.prediction_mode == 'specific_query':
         required_columns = {'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', 'CA'}
         missing_columns = required_columns - set(params_df.columns)
         if missing_columns:
             raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
 
-    elif args.feature_mode == 'default':
+    elif args.prediction_mode == 'default':
         required_columns = {'LA', 'RA', 'CS', 'Tem', 'CA'}
         if not required_columns.issubset(params_df.columns):
             raise ValueError("The CSV file must contain the columns: LA, RA, CS, Tem, and CA.")
 
-    elif args.feature_mode == 'target_screen':
+    elif args.prediction_mode == 'target_screen':
         required_columns = {'LA', 'RA', 'CS', 'CS_index', 'Tem', 'CA'}
         missing_columns = required_columns - set(params_df.columns)
         if missing_columns:
             raise ValueError(f"The following required columns are missing in the CSV file: {', '.join(missing_columns)}")
 
-    elif args.feature_mode == 'target_check':
+    elif args.prediction_mode == 'target_check':
         required_columns = {'LA', 'RA', 'CS', 'Start_End_Index', 'Tem', 'CA'}
         missing_columns = required_columns - set(params_df.columns)
         if missing_columns:
@@ -581,7 +620,7 @@ def main(args=None):
 
     params_df = params_df.loc[:, ~params_df.columns.str.contains('^Unnamed')]
 
-    if args.feature_mode == 'default':
+    if args.prediction_mode == 'default':
         if not {'LA', 'RA', 'CS', 'Tem', 'CA'}.issubset(params_df.columns):
             raise ValueError("The CSV file must contain the columns: LA, RA, CS, Tem, and CA.")
 
@@ -597,7 +636,7 @@ def main(args=None):
                     query_file = f"queries_{os.path.basename(fasta_file).split('.')[0]}_{motif}.fasta"
                     write_queries_to_fasta(queries, query_file)
 
-    elif args.feature_mode == 'target_screen':
+    elif args.prediction_mode == 'target_screen':
         if not {'LA', 'RA', 'CS', 'CS_index', 'Tem', 'CA'}.issubset(params_df.columns):
             raise ValueError("The CSV file must contain the columns: LA, RA, CS, CS_index, Tem, and CA.")
 
@@ -636,7 +675,7 @@ def main(args=None):
             output_dir = f"rnaplfold_output_{output_prefix}"
             os.makedirs(output_dir, exist_ok=True)
             lunp_file = run_rnaplfold(target_file, LA, RA, output_dir, temperature)
-            param_file = os.path.join(args.output_dir, 'parameters.cfg')
+            param_file = 'parameters.cfg'
             process_intarna_queries(target_file, query_file, lunp_file, param_file, LA, RA, output_prefix, motif)
             post_process_features(target_file, output_dir)
 
@@ -650,9 +689,7 @@ def main(args=None):
 
         if processed_files:
             final_output_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
-            # Also save a copy in the current working directory
-            pwd_output_path = "all_generated_merged_num.csv"
-            merge_all_generated_files(".", pwd_output_path, list(processed_files))
+            merge_all_generated_files(args.output_dir, final_output_path, list(processed_files))
             # Patch the_feature_set_predicted.csv to use the correct id2, seq2, target_file columns from CS_Dz in order
             predicted_path = os.path.join(args.output_dir, "the_feature_set_predicted.csv")
             if os.path.exists(predicted_path):
@@ -667,7 +704,7 @@ def main(args=None):
             print("\n✅ Feature generation completed successfully for target_screen mode!")
             return  # Skip the second processing phase
 
-    elif args.feature_mode == 'target_check':
+    elif args.prediction_mode == 'target_check':
         for _, row in params_df.iterrows():
             LA, RA, CS, temperature, core = int(row['LA']), int(row['RA']), row['CS'].split(','), float(row['Tem']), row['CA']
             start_end_data = row['Start_End_Index'].split(':')
@@ -721,7 +758,7 @@ def main(args=None):
                 write_queries_to_fasta(queries, query_file)
                 print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
 
-    elif args.feature_mode == 'specific_query':
+    elif args.prediction_mode == 'specific_query':
         if not {'LA_seq', 'RA_seq', 'CS', 'CS_Index_query', 'Tem', 'CA'}.issubset(params_df.columns):
             raise ValueError("The CSV file must contain the columns: LA_seq, RA_seq, CS, CS_Index_query, Tem, and CA.")
 
@@ -753,7 +790,7 @@ def main(args=None):
             output_dir = f"rnaplfold_output_{output_prefix}"
             os.makedirs(output_dir, exist_ok=True)
             lunp_file = run_rnaplfold(target_file, len(LA_seq), len(RA_seq), output_dir, temperature)
-            param_file = os.path.join(args.output_dir, 'parameters.cfg')
+            param_file = 'parameters.cfg'
             process_intarna_queries(target_file, query_file, lunp_file, param_file, len(LA_seq), len(RA_seq), output_prefix, CS)
             post_process_features(target_file, output_dir)
 
@@ -767,9 +804,7 @@ def main(args=None):
 
         if processed_files:
             final_output_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
-            # Also save a copy in the current working directory
-            pwd_output_path = "all_generated_merged_num.csv"
-            merge_all_generated_files(".", pwd_output_path, list(processed_files))
+            merge_all_generated_files(args.output_dir, final_output_path, list(processed_files))
             # Patch the_feature_set_predicted.csv to use the correct id2, seq2, target_file columns from CS_Dz in order
             predicted_path = os.path.join(args.output_dir, "the_feature_set_predicted.csv")
             if os.path.exists(predicted_path):
@@ -789,7 +824,7 @@ def main(args=None):
 
     print("Query generation completed for all modes.")
 
-    args.cfg = os.path.join(args.output_dir, 'parameters.cfg')
+    args.cfg = 'parameters.cfg'
 
     params_df = pd.read_csv(args.params)
     if not {'LA', 'RA', 'CS', 'Tem', 'CA'}.issubset(params_df.columns):
@@ -820,10 +855,10 @@ def main(args=None):
             output_dir = f"rnaplfold_output_{os.path.basename(fasta_file).split('.')[0]}"
             lunp_file = run_rnaplfold(fasta_file, LA, RA, output_dir, temperature)
 
-            if args.feature_mode == 'default':
+            if args.prediction_mode == 'default':
                 motif_matches = find_CS(target_seq, CS)
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
-            elif args.feature_mode == 'target_screen':
+            elif args.prediction_mode == 'target_screen':
                 if 'CS_index' not in row:
                     raise ValueError("For target_screen mode, the CSV file must contain a 'CS_index' column with the format 'target_file:CS_index' (e.g., '1.fasta:17').")
                 
@@ -857,7 +892,7 @@ def main(args=None):
 
                 motif_matches = [(start, end, motif, start, end)]
                 queries = prepare_sequences(target_seq, motif_matches, LA, RA, core)
-            elif args.feature_mode == 'target_check':
+            elif args.prediction_mode == 'target_check':
                 if 'Start_End_Index' not in row:
                     raise ValueError("For target_check mode, the CSV file must contain a 'Start_End_Index' column with the format 'target_file:start-end' (e.g., '1.fasta:50-100').")
                 
@@ -892,11 +927,11 @@ def main(args=None):
                 write_queries_to_fasta(queries, query_file)
                 print(f"Generated {len(queries)} queries for motifs in region {start}-{end} of {target_file_name}.")
 
-            elif args.feature_mode == 'target_screen':
+            elif args.prediction_mode == 'target_screen':
                 # Skip the second processing phase since it's already handled
                 continue
 
-            elif args.feature_mode == 'specific_query':
+            elif args.prediction_mode == 'specific_query':
                 # Skip the second processing phase since it's already handled
                 continue
 
@@ -906,7 +941,7 @@ def main(args=None):
             print(f"Generated {len(queries)} queries to {query_file}")
 
             output_prefix = os.path.basename(fasta_file).split('.')[0]
-            process_intarna_queries(fasta_file, query_file, lunp_file, args.cfg, LA, RA, output_prefix, CS[0])
+            process_intarna_queries(fasta_file, query_file, lunp_file, 'parameters.cfg', LA, RA, output_prefix, CS[0])
             
             post_process_features(fasta_file, output_dir)
 

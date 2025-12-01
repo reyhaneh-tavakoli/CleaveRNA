@@ -21,6 +21,41 @@ import tempfile
 import time
 from tqdm import tqdm
 import threading
+import shutil
+
+def check_dependencies():
+    """Check if required external tools are available"""
+    missing_tools = []
+    
+    # Check for RNAplfold
+    if not shutil.which('RNAplfold'):
+        missing_tools.append('RNAplfold (ViennaRNA package)')
+    
+    # Check for IntaRNA
+    if not shutil.which('IntaRNA'):
+        missing_tools.append('IntaRNA')
+    
+    if missing_tools:
+        print("\n❌ Missing required dependencies:")
+        for tool in missing_tools:
+            print(f"   • {tool}")
+        
+        print("\n📋 Installation instructions:")
+        print("\n🔹 Option 1 - Install via conda (recommended):")
+        print("   conda install -c bioconda viennarna intarna")
+        
+        print("\n🔹 Option 2 - Use existing conda environment:")
+        print("   conda activate intarna-env  # or your environment with these tools")
+        
+        print("\n🔹 Option 3 - Install from source:")
+        print("   ViennaRNA: https://www.tbi.univie.ac.at/RNA/")
+        print("   IntaRNA: https://github.com/BackofenLab/IntaRNA")
+        
+        print("\n💡 After installation, verify with:")
+        print("   RNAplfold --help")
+        print("   IntaRNA --help")
+        
+        raise SystemExit(1)
 
 # Progress tracking and UI enhancements
 class ProgressTracker:
@@ -277,6 +312,11 @@ def perform_cross_validation(X, y, model_name, feature_set_name, progress_tracke
     report_file_status(metrics_file, "ML metrics")
 
 def train(args):
+    # Check dependencies first
+    print("🔍 Checking required dependencies...")
+    check_dependencies()
+    print("✅ All dependencies found!")
+    
     # Initialize progress tracking
     estimated_time = predict_execution_time(args)
     print(f"\n🚀 Starting CleaveRNA analysis...")
@@ -307,16 +347,31 @@ def train(args):
             # Step 2: Run Feature.py
             step_start = time.time()
             print("🔧 Running Feature.py to generate 'all_generated_merged_num.csv'...")
-            targets_arg = ','.join(args.target_files_prediction) if args.target_files_prediction else ''
+            # Convert target files to absolute paths
+            if args.target_files_prediction:
+                abs_targets = [os.path.abspath(f) for f in args.target_files_prediction]
+                targets_arg = ','.join(abs_targets)
+            else:
+                targets_arg = ''
+            # Convert params file to absolute path
+            abs_params = os.path.abspath(args.params)
             feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
-            feature_command = f"python3 {feature_script_path} --targets {targets_arg} --params {args.params} --prediction_mode {args.prediction_mode} --output_dir {args.output_dir}"
+            feature_command = f"python3 {feature_script_path} --targets {targets_arg} --params {abs_params} --prediction_mode {args.prediction_mode} --output_dir {args.output_dir}"
             
             progress.update(2, "Executing Feature.py")
             try:
-                subprocess.run(feature_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                result = subprocess.run(feature_command, shell=True, check=True, cwd=args.output_dir, capture_output=True, text=True)
+                if result.stdout:
+                    print("Feature.py output:", result.stdout)
+                if result.stderr:
+                    print("Feature.py stderr:", result.stderr)
                 progress.step_success("Feature.py execution", time.time() - step_start)
             except subprocess.CalledProcessError as e:
                 print(f"❌ Error: Feature.py execution failed with error: {e}")
+                if e.stdout:
+                    print(f"Feature.py stdout: {e.stdout}")
+                if e.stderr:
+                    print(f"Feature.py stderr: {e.stderr}")
                 sys.exit(1)
 
             # Step 3: Verify output file generation
@@ -467,7 +522,7 @@ def train(args):
             progress.update(2, "Standardizing generated data")
             mean_std_file = f"{model_name}_statistics.csv"
             mean_std = pd.read_csv(mean_std_file, index_col=0)
-            df_generated = pd.read_csv("all_generated_merged_num.csv")
+            df_generated = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
             df_standardized_generated = df_generated.copy()
 
             # Only standardize columns that exist in both dataframes and are numeric
@@ -508,7 +563,7 @@ def train(args):
             # Step 18: Create CS_info file first (moved from step 20)
             step_start = time.time()
             progress.update(1, "Creating CS_info file")
-            df_all_generated = pd.read_csv("all_generated_merged_num.csv")
+            df_all_generated = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
             cs_dz_file = "CS_info.csv"
             if 'target_file' in df_all_generated.columns:
                 df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
@@ -656,7 +711,10 @@ def train(args):
             progress.update(3, "Generating user training features")
             feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
             user_merged_file = os.path.join(args.output_dir, f"{model_name}_user_merged_num.csv")
-            user_train_command = f"python3 {feature_script_path} --targets {','.join(user_train_files)} --params {args.params} --prediction_mode default --output_dir {args.output_dir}"
+            # Convert target files and params to absolute paths
+            abs_user_train_files = [os.path.abspath(f) for f in user_train_files]
+            abs_params = os.path.abspath(args.params)
+            user_train_command = f"python3 {feature_script_path} --targets {','.join(abs_user_train_files)} --params {abs_params} --prediction_mode default --output_dir {args.output_dir}"
             try:
                 subprocess.run(user_train_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 progress.step_success("User feature generation", time.time() - step_start)
@@ -698,6 +756,9 @@ def train(args):
         # Add training mode specific files to keep
         if args.target_files_training:
             keep_files.add(f"{model_name}_user_merged_num.csv")
+        
+        # Always keep user_merged_num.csv file at the end
+        keep_files.add(f"{model_name}_user_merged_num.csv")
         
         # Input files to protect (never remove these)
         protected_input_files = set()
@@ -918,48 +979,48 @@ def main():
 └─────────────────────────────────────────────────────────────────────────────┘
 
 🎯 TRAINING MODE - Generate features for model training:
-   ┌─────────────────────────────────────────────────────────────────────────┐
-   │ cleaverna --target_files_training train1.fasta train2.fasta \\          │
-   │           --params parameters.csv --prediction_mode default \\          │
-   │           --model_name my_model --output_dir results/                   │
-   └─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ cleaverna --target_files_training train1.fasta train2.fasta \\              │
+│           --params parameters.csv --prediction_mode default \\              │
+│           --model_name my_model --output_dir results/                       │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 🔮 PREDICTION MODE - Standard cleavage site prediction:
-   ┌─────────────────────────────────────────────────────────────────────────┐
-   │ cleaverna --target_files_prediction seq1.fasta seq2.fasta \\            │
-   │           --params parameters.csv --prediction_mode default \\          │
-   │           --training_file training_data.csv \\                          │
-   │           --training_scores labels.csv \\                               │
-   │           --model_name prediction_model --output_dir results/           │
-   └─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ cleaverna --target_files_prediction seq1.fasta seq2.fasta \\                │
+│           --params parameters.csv --prediction_mode default \\              │
+│           --training_file training_data.csv \\                              │
+│           --training_scores labels.csv \\                                   │
+│           --model_name prediction_model --output_dir results/               │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 🎯 TARGET SCREENING - Screen specific cleavage sites:
-   ┌─────────────────────────────────────────────────────────────────────────┐
-   │ cleaverna --target_files_prediction target.fasta \\                     │
-   │           --params screen_params.csv --prediction_mode target_screen \\ │
-   │           --training_file training_data.csv \\                          │
-   │           --training_scores labels.csv \\                               │
-   │           --model_name screen_model --output_dir screening_results/     │
-   └─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ cleaverna --target_files_prediction target.fasta \\                         │
+│           --params screen_params.csv --prediction_mode target_screen \\     │
+│           --training_file training_data.csv \\                              │
+│           --training_scores labels.csv \\                                   │
+│           --model_name screen_model --output_dir screening_results/         │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 🔍 TARGET CHECK - Validate cleavage sites in specific regions:
-   ┌─────────────────────────────────────────────────────────────────────────┐
-   │ cleaverna --target_files_prediction target.fasta \\                     │
-   │           --params check_params.csv --prediction_mode target_check \\   │
-   │           --training_file training_data.csv \\                          │
-   │           --training_scores labels.csv \\                               │
-   │           --model_name check_model --output_dir check_results/          │
-   └─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ cleaverna --target_files_prediction target.fasta \\                         │
+│           --params check_params.csv --prediction_mode target_check \\       │
+│           --training_file training_data.csv \\                              │
+│           --training_scores labels.csv \\                                   │
+│           --model_name check_model --output_dir check_results/              │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 ⚡ SPECIFIC QUERY - Custom DNAzyme sequence analysis:
-   ┌─────────────────────────────────────────────────────────────────────────┐
-   │ cleaverna --target_files_prediction target.fasta \\                     │
-   │           --params query_params.csv --prediction_mode specific_query \\ │
-   │           --specific_query_input custom_queries.csv \\                  │
-   │           --training_file training_data.csv \\                          │
-   │           --training_scores labels.csv \\                               │
-   │           --model_name query_model --output_dir query_results/          │
-   └─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ cleaverna --target_files_prediction target.fasta \\                         │
+│           --params query_params.csv --prediction_mode specific_query \\     │
+│           --specific_query_input custom_queries.csv \\                      │
+│           --training_file training_data.csv \\                              │
+│           --training_scores labels.csv \\                                   │
+│           --model_name query_model --output_dir query_results/              │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1046,7 +1107,7 @@ def main():
             '--output_dir', 
             metavar='DIR',
             help='Output directory for results (default: current directory)', 
-            default=os.getcwd()
+            default='.'
         )
         args = parser.parse_args()
 

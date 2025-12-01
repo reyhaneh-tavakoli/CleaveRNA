@@ -11,28 +11,28 @@ unset __conda_setup
 conda activate intarna-env
 
 # Define directories
-script_path="../../../CleaveRNA.py"  # Path to CleaveRNA.py
+script_path="../../../../CleaveRNA/CleaveRNA.py"  # Path to CleaveRNA.py
 
 # Define the input files and parameters
-TARGETS="target_1.fasta target_2.fasta"  # Space-separated FASTA files
+TARGET_FILES="target_1.fasta target_2.fasta"  # Space-separated FASTA files
 PARAMS="test_target_screen.csv"
-PREDICTION_MODE_FILE="HPBC_user_merged_num.csv"  # The actual default train CSV file
+TRAINING_FILE="HPBC_user_merged_num.csv"  # The actual default train CSV file
 MODEL_NAME="HPBC"
-ML_Training_Score="HPBC_target.csv"
+TRAINING_SCORES="HPBC_target.csv"
 
 # Record the start time
 start_time=$(date)
 
-# Default mode
-echo "Running in prediction mode..."
+# Target screen mode
+echo "Running in target_screen prediction mode..."
 output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
-  --targets $TARGETS \
+  --target_files_prediction $TARGET_FILES \
   --params $PARAMS \
-  --feature_mode target_screen \
-  --prediction_mode $PREDICTION_MODE_FILE \
+  --prediction_mode target_screen \
+  --training_file $TRAINING_FILE \
   --model_name $MODEL_NAME \
-  --ML_training_score $ML_Training_Score \
+  --training_scores $TRAINING_SCORES \
   --output_dir "$output_dir"
 
 # Record the end time

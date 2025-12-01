@@ -1,0 +1,52 @@
+Metadata-Version: 2.4
+Name: CleaveRNA
+Version: 1.0.0
+Summary: Advanced machine learning-based computational tool for scoring candidate DNAzyme cleavage sites
+Home-page: https://github.com/reyhaneh-tavakoli/CleaveRNA
+Author: reyhaneh tavakoli and contributors
+Author-email: rey.ta.kop.biochem@gmail.com
+License: MIT License with Attribution Requirements
+Project-URL: Bug Reports, https://github.com/reyhaneh-tavakoli/CleaveRNA/issues
+Project-URL: Source, https://github.com/reyhaneh-tavakoli/CleaveRNA
+Project-URL: Documentation, https://github.com/reyhaneh-tavakoli/CleaveRNA/wiki
+Keywords: DNAzyme,cleavage sites,prediction,machine learning,bioinformatics,RNA
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: scikit-learn>=1.0.0
+Requires-Dist: matplotlib>=3.3.0
+Requires-Dist: tqdm>=4.60.0
+Requires-Dist: argparse
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Provides-Extra: conda
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+CleaveRNA - RNA cleavage site prediction tool using machine learning
