@@ -1029,7 +1029,6 @@ def main():
 
 📚 Documentation: https://github.com/reyhaneh-tavakoli/CleaveRNA
 💡 Issues & Support: https://github.com/reyhaneh-tavakoli/CleaveRNA/issues
-📧 Contact: reyhaneh.tavakoli@uni-freiburg.de
 
             """,
             formatter_class=argparse.RawDescriptionHelpFormatter,
