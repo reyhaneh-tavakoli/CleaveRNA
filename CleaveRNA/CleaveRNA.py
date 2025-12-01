@@ -1027,9 +1027,9 @@ def main():
 │                            🔗 MORE INFORMATION                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-📚 Documentation: https://github.com/reytakop/CleaveRNA
-💡 Issues & Support: https://github.com/reytakop/CleaveRNA/issues
-📧 Contact: [Your contact information]
+📚 Documentation: https://github.com/reyhaneh-tavakoli/CleaveRNA
+💡 Issues & Support: https://github.com/reyhaneh-tavakoli/CleaveRNA/issues
+📧 Contact: reyhaneh.tavakoli@uni-freiburg.de
 
             """,
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1094,11 +1094,11 @@ def main():
             '--prediction_mode', 
             choices=['default', 'target_screen', 'target_check', 'specific_query'],
             metavar='MODE',
-            help='''Analysis mode selection:
-  • default        : Standard cleavage site prediction
-  • target_screen  : Screen custom cleavage sites
-  • target_check   : Validate sites in specific regions  
-  • specific_query : Analyze custom DNAzyme sequences'''
+            help='Analysis mode selection:\n'
+                 '• default : Standard cleavage site prediction\n'
+                 '• target_screen : Screen custom cleavage sites\n'
+                 '• target_check : Validate sites in specific regions\n'
+                 '• specific_query : Analyze custom DNAzyme sequences'
         )
         
         # Output Options Group
