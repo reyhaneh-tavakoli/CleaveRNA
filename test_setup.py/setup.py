@@ -62,7 +62,6 @@ setup(
     entry_points={
         "console_scripts": [
             "cleaverna=CleaveRNA.CleaveRNA:main",
-            "feature=CleaveRNA.Feature:main",
         ],
     },
     include_package_data=True,

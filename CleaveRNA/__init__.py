@@ -10,9 +10,8 @@ Modules:
     CleaveRNA: Main prediction and training module
     Feature: Feature generation and processing module
 
-Command-line tools:
-    cleaverna: Main CleaveRNA analysis tool
-    feature: Feature extraction tool
+Command-line tool:
+    cleaverna: Main CleaveRNA analysis and feature extraction tool
 """
 
 __version__ = "1.0.0"
