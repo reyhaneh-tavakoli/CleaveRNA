@@ -8,7 +8,7 @@ CleaveRNA is a machine learning based computational tool for scoring candidate D
 
 ## Dependencies
 
-The following tools need to be present in the environment, e.g. via a respective coenda setup
+The following tools need to be present in the environment, e.g. via a respective conda setup
 
 - Python v3 (python)
 - IntaRNA (intarna)
