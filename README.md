@@ -8,7 +8,7 @@ CleaveRNA is a machine learning based computational tool for scoring candidate D
 
 ## Dependencies
 
-The following tools need to be present in the environment, e.g. via a respective coenda setup
+The following tools need to be present in the environment, e.g. via a respective conda setup
 
 - Python v3 (python)
 - IntaRNA (intarna)
@@ -35,11 +35,11 @@ If you have your own dataset (see details in the **`data_preparation`** folder),
 
 1. **Prepare the target sequence files in FASTA format**
      
-- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Train_mode/HPBC)
+- Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/tests/Train_mode/HPBC)
 - **Notes:**  
   - The minimum sequence length must be **150 nt**.  
   - The sequence name must match the FASTA file name.  
- - **Example:** If the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
+ - **Example:** If the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Train_mode/HPBC/BCL-1.fasta), the header must start with:  
 
 ```fasta
 >BCL-1
@@ -51,7 +51,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 ```
   
 2. **Prepare the parameter file (default mode)**  
-- Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
+- Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Train_mode/HPBC/test_default.csv)  
 - This file contains **five columns**, described below:  
   - **LA**: Left binding arm length of the DNAzyme  
   - **RA**: Right binding arm length of the DNAzyme  
@@ -75,7 +75,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 --model_name "HPBC"
 ```
 5. **Run the shell script**
-- Update the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/run.sh)  **lines 3–12** to match your conda environment.  
+- Update the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Train_mode/HPBC/run.sh)  **lines 3–12** to match your conda environment.  
 - In the input files directory, run the tool with:
      
 ```bash
@@ -83,7 +83,7 @@ bash run.sh
 ```   
 ### The Output file
 
-- The tool will generate the **pre_train file**: [HPBC_user_merged_num.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/HPBC_user_merged_num.csv)  
+- The tool will generate the **pre_train file**: [HPBC_user_merged_num.csv](https://github.com/reytakop/CleaveRNA/blob/main/tests/Train_mode/HPBC/HPBC_user_merged_num.csv)  
 - In this file, you can find the generated DNAzymes (`seq_2` column) based on your defined parameters.  
 - All dinucleotide cleavage sites (`id2` column) are included, along with the generated feature sets for each cleavage site.
   
@@ -104,10 +104,10 @@ In this mode, you can use the generated **pre_train file** to score the cleavage
 The required input files are:  
 - **Target sequence FASTA files**  
   - These are the sequences you want to consider as targets for DNAzyme.  
-  - Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/default/HPBC)  
+  - Example test files: [`BCL-1.fasta`, `BCL-2.fasta`, `BCL-3.fasta`, `BCL-4.fasta`, `BCL-5.fasta`, `HPV.fasta`](https://github.com/reytakop/CleaveRNA/tree/main/tests/Prediction_mode/default/HPBC)  
   - **Notes**:  
     - The minimum sequence length must be **150 nt**.  
-    - The sequence name must match the FASTA file name. For example, if the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/BCL-1.fasta), the header must start with:  
+    - The sequence name must match the FASTA file name. For example, if the target file is [`BCL-1.fasta`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/default/HPBC/BCL-1.fasta), the header must start with:  
 
 ```bash
 >BCL-1
@@ -117,7 +117,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 - **Parameter file**
   
    In this example, the default parameter mode is used.  
-   - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Train_mode/HPBC/test_default.csv)  
+   - Example: [`test_default.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Train_mode/HPBC/test_default.csv)  
    - This file contains **five columns** (defined previously) and must be uploaded with the following command:
      
 ```bash
@@ -126,7 +126,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 
 - **Pre_train file**
    
-   - Example: [`HPBC_user_merged_num.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_user_merged_num.csv)  
+   - Example: [`HPBC_user_merged_num.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/default/HPBC/HPBC_user_merged_num.csv)  
    - **Notes**:  
      - The pre_train file is either generated during `train_mode` or you can use the default provided file.  
      - Upload this file using:
@@ -146,7 +146,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
 
 - **Classification score file**
   
-   - Example: [`HPBC_target.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_target.csv)  
+   - Example: [`HPBC_target.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/default/HPBC/HPBC_target.csv)  
      - This file contains **two columns**: **id2**, which represents the cleavage site index, and **Y**, which indicates the classification score of that position based on experimental data.  
      - **Notes**: This file must be prepared by the user or you can use the corresponding file from the default traini. If using your own dataset, the fraction cleavage of each site can be converted to binary classification as described in the **`data_preparation`** folder.
          
@@ -164,7 +164,7 @@ GTTGGCCCCCGTTACTTTTCCTCTGGGAAATATGGCGCACGCTGGGAGAACAGGGTACGATAACCGGGAGATAGTGATGA
       
 - **Run the shell script**
 
-  - Update **lines 3–14** [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/run.sh)  to match  your conda environment.  
+  - Update **lines 3–14** [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/default/HPBC/run.sh)  to match  your conda environment.  
   - From the input files directory, run the tool using:  
 
 ```bash
@@ -176,11 +176,11 @@ bash run.sh
 The tool will generate the following output files:
 
 1. **Model performance metrics**  
-   - Example: [`HPBC_ML_metrics.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv) 
+   - Example: [`HPBC_ML_metrics.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/default/HPBC/HPBC_ML_metrics.csv) 
    - Contains all machine learning scores related to the prediction.  
 
 2. **Prediction file**  
-   - Example: [`HPBC_CleaveRNA_output.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/default/HPBC/HPBC_CleaveRNA_output.csv)  
+   - Example: [`HPBC_CleaveRNA_output.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/default/HPBC/HPBC_CleaveRNA_output.csv)  
    - This file reports candidate cleavage sites scored by their accessibility for DNAzyme cleavage reactions.
      
    **Columns included:**  
@@ -197,8 +197,8 @@ The tool will generate the following output files:
 
 In this mode, prediction and scoring of candidate cleavage sites are performed only for a specific region of the target sequence.  
 - The parameter file in **target_check** mode contains an additional column called **Start_End_Index**, which defines the desired region within the target sequence.  
-- Example file: [test_target_check.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/test_target_check.csv)  
-- To run the prediction in **target_check** mode, update the [run.sh](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_check/test/run.sh) script (lines 3–14) and use the provided [input files](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_check/test).  
+- Example file: [test_target_check.csv](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/target_check/test/test_target_check.csv)  
+- To run the prediction in **target_check** mode, update the [run.sh](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/target_check/test/run.sh) script (lines 3–14) and use the provided [input files](https://github.com/reytakop/CleaveRNA/tree/main/tests/Prediction_mode/target_check/test).  
 
 ---
 
@@ -206,14 +206,14 @@ In this mode, prediction and scoring of candidate cleavage sites are performed o
 
 In this mode, the prediction is performed only for the cleavage sites whose indices are provided by the user.  
 - The input files in this mode are the same as in the default mode, except for the **parameter file**.  
-You can see an example of this file here: [`test_target_screen.csv`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/test_target_screen.csv)  
+You can see an example of this file here: [`test_target_screen.csv`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/target_screen/test/test_target_screen.csv)  
 
 - The parameter file in this mode contains one additional column as described below:
   - **CS_index**: This column contains the name of the target file and the index of the cleavage site.
 
-- You can run this mode with all the required input files in the [`target_screen`](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/target_screen/test) directory.  
+- You can run this mode with all the required input files in the [`target_screen`](https://github.com/reytakop/CleaveRNA/tree/main/tests/Prediction_mode/target_screen/test) directory.  
 
-  - **Note**: Please update lines 3–14 in the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/target_screen/test/run.sh) file according to your conda environment.  
+  - **Note**: Please update lines 3–14 in the [`run.sh`](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/target_screen/test/run.sh) file according to your conda environment.  
 
 ---
  
@@ -227,8 +227,8 @@ You can see an example of this file here: [`test_target_screen.csv`](https://git
    - **CS_Index_query**: The index of dinucleotide cleavage site on the target file.
    - **Tem**: Reaction temperature for DNAzyme activity.  
    - **CA**: Catalytic core sequence of the DNAzyme.
- - for the example file please check the [test_specific_query.csv](https://github.com/reytakop/CleaveRNA/blob/main/CleaveRNA/Prediction_mode/specific_query/test/test_specific_query.csv)
- - You can run this node with all the requeried files in [specific_query folder](https://github.com/reytakop/CleaveRNA/tree/main/CleaveRNA/Prediction_mode/specific_query/test)
+ - for the example file please check the [test_specific_query.csv](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/specific_query/test/test_specific_query.csv)
+ - You can run this node with all the required files in [specific_query folder](https://github.com/reytakop/CleaveRNA/tree/main/tests/Prediction_mode/specific_query/test)
      
 
 
