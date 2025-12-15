@@ -7,6 +7,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.svm import SVC
 import sys
 
+# setting a static random number seed for ML 
+
 # Load dataset
 data_path = sys.argv[1]
 output_dir = sys.argv[2]  # Directory to save results
