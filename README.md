@@ -228,7 +228,7 @@ You can see an example of this file here: [`test_target_screen.csv`](https://git
    - **Tem**: Reaction temperature for DNAzyme activity.  
    - **CA**: Catalytic core sequence of the DNAzyme.
  - for the example file please check the [test_specific_query.csv](https://github.com/reytakop/CleaveRNA/blob/main/tests/Prediction_mode/specific_query/test/test_specific_query.csv)
- - You can run this node with all the requeried files in [specific_query folder](https://github.com/reytakop/CleaveRNA/tree/main/tests/Prediction_mode/specific_query/test)
+ - You can run this node with all the required files in [specific_query folder](https://github.com/reytakop/CleaveRNA/tree/main/tests/Prediction_mode/specific_query/test)
      
 
 
