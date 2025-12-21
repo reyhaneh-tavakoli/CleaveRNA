@@ -1,3 +1,0 @@
-[console_scripts]
-cleaverna = CleaveRNA.CleaveRNA:main
-feature = CleaveRNA.Feature:main

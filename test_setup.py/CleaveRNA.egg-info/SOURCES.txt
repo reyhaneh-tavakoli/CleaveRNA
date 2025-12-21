@@ -1,7 +1,0 @@
-setup.py
-CleaveRNA.egg-info/PKG-INFO
-CleaveRNA.egg-info/SOURCES.txt
-CleaveRNA.egg-info/dependency_links.txt
-CleaveRNA.egg-info/entry_points.txt
-CleaveRNA.egg-info/requires.txt
-CleaveRNA.egg-info/top_level.txt

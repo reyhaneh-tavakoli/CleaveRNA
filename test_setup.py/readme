@@ -1,3 +1,0 @@
-pip install -e . --force-reinstall
-conda activate intarna-env
-cleaverna --target_files_prediction HPV.fasta --params test_default.csv --prediction_mode default --training_file HPBC_user_merged_num.csv --training_scores HPBC_target.csv --model_name HPBC --output_dir ./
