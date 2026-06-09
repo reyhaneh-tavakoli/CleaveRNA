@@ -522,7 +522,7 @@ def train(args):
             progress.update(2, "Standardizing generated data")
             mean_std_file = f"{model_name}_statistics.csv"
             mean_std = pd.read_csv(mean_std_file, index_col=0)
-            df_generated = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
+            df_generated = pd.read_csv("all_generated_merged_num.csv")
             df_standardized_generated = df_generated.copy()
 
             # Only standardize columns that exist in both dataframes and are numeric
@@ -563,7 +563,7 @@ def train(args):
             # Step 18: Create CS_info file first (moved from step 20)
             step_start = time.time()
             progress.update(1, "Creating CS_info file")
-            df_all_generated = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
+            df_all_generated = pd.read_csv("all_generated_merged_num.csv")
             cs_dz_file = "CS_info.csv"
             if 'target_file' in df_all_generated.columns:
                 df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
@@ -725,7 +725,7 @@ def train(args):
             # Step 5: Rename output file
             step_start = time.time()
             progress.update(2, "Finalizing user training data")
-            default_generated_file = os.path.join(args.output_dir, "all_generated_merged_num.csv")
+            default_generated_file = "all_generated_merged_num.csv"
             if os.path.exists(default_generated_file):
                 os.rename(default_generated_file, user_merged_file)
                 # Suppressed rename message

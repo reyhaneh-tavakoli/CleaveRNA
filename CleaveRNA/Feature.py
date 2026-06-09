@@ -688,7 +688,7 @@ def main(args=None):
                 })
 
         if processed_files:
-            final_output_path = os.path.join(args.output_dir, "all_generated_merged_num.csv")
+            final_output_path = os.path.join(os.getcwd(), "all_generated_merged_num.csv")
             merge_all_generated_files(args.output_dir, final_output_path, list(processed_files))
             # Patch the_feature_set_predicted.csv to use the correct id2, seq2, target_file columns from CS_Dz in order
             predicted_path = os.path.join(args.output_dir, "the_feature_set_predicted.csv")
