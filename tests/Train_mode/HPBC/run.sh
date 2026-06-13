@@ -22,7 +22,7 @@ start_time=$(date)
 
 echo "Running in train mode..."
 output_dir=$(pwd)
-python3 "$script_dir" --target_files_training $TARGET_FILES_TRAINING --params $PARAMS --prediction_mode default --output_dir "$output_dir" --model_name "HPBC" 
+python3 "$script_dir" --target_files_training $TARGET_FILES_TRAINING --params $PARAMS --prediction_mode default --output_dir "output" --model_name "HPBC" 
 
 # Record the end time
 end_time=$(date)

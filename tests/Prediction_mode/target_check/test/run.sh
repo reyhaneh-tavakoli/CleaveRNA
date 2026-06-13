@@ -14,7 +14,7 @@ conda activate intarna-env
 script_path="../../../../CleaveRNA/CleaveRNA.py"  # Path to CleaveRNA.py
 
 # Define the input files and parameters
-TARGET_FILES="target_1.fasta target_2.fasta"  # Space-separated FASTA files
+TARGET_FILES="target_1.fasta target_2.fasta target_3.fasta"  # Space-separated FASTA files
 PARAMS="test_target_check.csv"
 TRAINING_FILE="HPBC_user_merged_num.csv"  # The training data feature matrix
 MODEL_NAME="HPBC"
@@ -26,7 +26,6 @@ start_time=$(date)
 
 # Prediction mode with target_check
 echo "Running in prediction mode with target_check..."
-output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
   --target_files_prediction $TARGET_FILES \
   --params $PARAMS \
@@ -34,7 +33,7 @@ python3 "$script_path" \
   --training_file $TRAINING_FILE \
   --training_scores $TRAINING_SCORES \
   --model_name $MODEL_NAME \
-  --output_dir "$output_dir"
+  --output_dir "output"
 
 # Record the end time
 end_time=$(date)

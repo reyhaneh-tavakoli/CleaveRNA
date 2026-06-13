@@ -312,6 +312,9 @@ def perform_cross_validation(X, y, model_name, feature_set_name, progress_tracke
     report_file_status(metrics_file, "ML metrics")
 
 def train(args):
+    # Resolve output_dir to absolute path FIRST to prevent nested directory creation
+    args.output_dir = os.path.abspath(args.output_dir)
+
     # Check dependencies first
     print("🔍 Checking required dependencies...")
     check_dependencies()
@@ -360,7 +363,11 @@ def train(args):
             
             progress.update(2, "Executing Feature.py")
             try:
-                result = subprocess.run(feature_command, shell=True, check=True, cwd=args.output_dir, capture_output=True, text=True)
+                result = subprocess.run(
+                    feature_command, shell=True, check=True, capture_output=True, text=True,
+                    cwd=args.output_dir,
+                )
+
                 if result.stdout:
                     print("Feature.py output:", result.stdout)
                 if result.stderr:
@@ -423,7 +430,7 @@ def train(args):
             # Only calculate statistics for numeric columns
             numeric_columns = df_default.select_dtypes(include=[np.number]).columns
             mean_std = df_default[numeric_columns].describe().loc[['mean', 'std']]
-            mean_std_file = f"{model_name}_statistics.csv"
+            mean_std_file = os.path.join(args.output_dir, f"{model_name}_statistics.csv")
             mean_std.to_csv(mean_std_file)
             report_file_status(mean_std_file, "Statistics")
             progress.step_success("Statistics calculation", time.time() - step_start)
@@ -441,10 +448,9 @@ def train(args):
                     except (KeyError, TypeError):
                         # Skip columns that can't be standardized
                         continue
-            standardized_file = f"{model_name}_standardized_train.csv"
+            standardized_file = os.path.join(args.output_dir, f"{model_name}_standardized_train.csv")
             df_standardized.to_csv(standardized_file, index=False)
             report_file_status(standardized_file, "Standardized train")
-            progress.step_success("Data standardization", time.time() - step_start)
 
             # Step 8: Balance target data
             step_start = time.time()
@@ -454,7 +460,7 @@ def train(args):
             df_balanced = df_target.groupby('ML_training_score', group_keys=False).apply(
                 lambda x: x.sample(df_target['ML_training_score'].value_counts().min(), random_state=89273554)
             )
-            balanced_file = f"{model_name}_balanced_classification.csv"
+            balanced_file = os.path.join(args.output_dir, f"{model_name}_balanced_classification.csv")
             df_balanced.to_csv(balanced_file, index=False)
             report_file_status(balanced_file, "Balanced classification")
 
@@ -499,7 +505,7 @@ def train(args):
                 print("❌ Error: ML_training_score column was lost during merge")
                 sys.exit(1)
             
-            merged_train_file = f"{model_name}_ML_train.csv"
+            merged_train_file = os.path.join(args.output_dir, f"{model_name}_ML_train.csv")
             df_merged_train.to_csv(merged_train_file, index=False)
             report_file_status(merged_train_file, "ML train")
 
@@ -512,7 +518,7 @@ def train(args):
             feature_set = ['E_1', 'Pu1_1', 'Pu2_1', 'E_hybrid_1', 'seedNumber_1', 'seedEbest_1', 'seedNumber_3', 'pumin1_4u', 'pumin1_4d']
             df_train = pd.read_csv(merged_train_file)
             feature_set_with_y = feature_set + ['ML_training_score']
-            feature_set_file = f"{model_name}_ML_train_feature_set.csv"
+            feature_set_file = os.path.join(args.output_dir, f"{model_name}_ML_train_feature_set.csv")
             df_train[feature_set_with_y].to_csv(feature_set_file, index=False)
             report_file_status(feature_set_file, "ML train feature set")
             progress.step_success("Feature set preparation", time.time() - step_start)
@@ -520,9 +526,9 @@ def train(args):
             # Step 11: Standardize generated data
             step_start = time.time()
             progress.update(2, "Standardizing generated data")
-            mean_std_file = f"{model_name}_statistics.csv"
+            mean_std_file = os.path.join(args.output_dir, f"{model_name}_statistics.csv")
             mean_std = pd.read_csv(mean_std_file, index_col=0)
-            df_generated = pd.read_csv("all_generated_merged_num.csv")
+            df_generated = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
             df_standardized_generated = df_generated.copy()
 
             # Only standardize columns that exist in both dataframes and are numeric
@@ -543,11 +549,11 @@ def train(args):
             columns_to_keep = [col for col in columns_to_keep if col in df_standardized_generated.columns]
             df_standardized_generated = df_standardized_generated[columns_to_keep]
             
-            standardized_generated_file = "standardized_all_generated_merged_num.csv"
+            standardized_generated_file = os.path.join(args.output_dir, "standardized_all_generated_merged_num.csv")
             df_standardized_generated.to_csv(standardized_generated_file, index=False)
             report_file_status(standardized_generated_file, "Standardized generated merged num")
 
-            generated_feature_set_file = "generated_ML_test_feature_set.csv"
+            generated_feature_set_file = os.path.join(args.output_dir, "generated_ML_test_feature_set.csv")
             # Only select feature columns that exist in the dataframe
             available_features = [col for col in feature_set if col in df_standardized_generated.columns]
             if available_features:
@@ -557,14 +563,19 @@ def train(args):
             report_file_status(generated_feature_set_file, "Generated ML test feature set")
             progress.step_success("Generated data standardization", time.time() - step_start)
 
-            # Step 12-17: Train SVM model (progress handled within function)
-            train_and_save_svm(f"{model_name}_ML_train_feature_set.csv", model_name, "default_train_feature_set", progress)
+            # Step 12-17: Train SVM model — must run from output_dir so pkl and metrics land there
+            _orig_cwd = os.getcwd()
+            os.chdir(args.output_dir)
+            try:
+                train_and_save_svm(f"{model_name}_ML_train_feature_set.csv", model_name, "default_train_feature_set", progress)
+            finally:
+                os.chdir(_orig_cwd)
 
             # Step 18: Create CS_info file first (moved from step 20)
             step_start = time.time()
             progress.update(1, "Creating CS_info file")
-            df_all_generated = pd.read_csv("all_generated_merged_num.csv")
-            cs_dz_file = "CS_info.csv"
+            df_all_generated = pd.read_csv(os.path.join(args.output_dir, "all_generated_merged_num.csv"))
+            cs_dz_file = os.path.join(args.output_dir, "CS_info.csv")
             if 'target_file' in df_all_generated.columns:
                 df_all_generated[['id2', 'seq2', 'target_file']].to_csv(cs_dz_file, index=False)
             else:
@@ -706,37 +717,103 @@ def train(args):
             model_name = args.model_name
             user_train_files = args.target_files_training
             
-            # Step 4: Generate user features
             step_start = time.time()
             progress.update(3, "Generating user training features")
             feature_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Feature.py'))
             user_merged_file = os.path.join(args.output_dir, f"{model_name}_user_merged_num.csv")
-            # Convert target files and params to absolute paths
+            
+            # تبدیل به مسیر مطلق
             abs_user_train_files = [os.path.abspath(f) for f in user_train_files]
             abs_params = os.path.abspath(args.params)
-            user_train_command = f"python3 {feature_script_path} --targets {','.join(abs_user_train_files)} --params {abs_params} --prediction_mode default --output_dir {args.output_dir}"
+            abs_output_dir = os.path.abspath(args.output_dir)
+            
+            # ساخت دایرکتوری خروجی
+            os.makedirs(abs_output_dir, exist_ok=True)
+            
+            # ذخیره دایرکتوری اصلی
+            original_cwd = os.getcwd()
+            
+            # تغییر به دایرکتوری خروجی
+            os.chdir(abs_output_dir)
+            
+            # کپی کردن فایل‌های مورد نیاز به دایرکتوری خروجی
+            import shutil
+            
+            # کپی فایل پارامترها
+            params_basename = os.path.basename(abs_params)
+            if not os.path.exists(params_basename):
+                shutil.copy2(abs_params, params_basename)
+            
+            # کپی فایل‌های FASTA
+            fasta_basenames = []
+            for fasta_file in abs_user_train_files:
+                fasta_basename = os.path.basename(fasta_file)
+                fasta_basenames.append(fasta_basename)
+                if not os.path.exists(fasta_basename):
+                    shutil.copy2(fasta_file, fasta_basename)
+            
+            # ساخت دستور با مسیرهای نسبی
+            user_train_command = f"python3 {feature_script_path} --targets {','.join(fasta_basenames)} --params {params_basename} --prediction_mode default --output_dir ."
+            
+            print(f"📝 Executing: {user_train_command}")
+            
             try:
-                subprocess.run(user_train_command, shell=True, check=True, cwd=args.output_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # اجرا با گرفتن خروجی (بدون DEVNULL)
+                result = subprocess.run(user_train_command, shell=True, check=True, capture_output=True, text=True)
+                
+                # نمایش خروجی برای دیباگ
+                if result.stdout:
+                    print("✅ Feature.py stdout (first 500 chars):", result.stdout[:500])
+                if result.stderr:
+                    print("⚠️ Feature.py stderr:", result.stderr[:500])
+                    
                 progress.step_success("User feature generation", time.time() - step_start)
+                
             except subprocess.CalledProcessError as e:
-                print(f"❌ Error: Feature.py execution failed for user_train_file with error: {e}")
+                print(f"❌ Error: Feature.py execution failed with error: {e}")
+                print(f"Return code: {e.returncode}")
+                print(f"stdout: {e.stdout[:500] if e.stdout else '(empty)'}")
+                print(f"stderr: {e.stderr[:500] if e.stderr else '(empty)'}")
+                os.chdir(original_cwd)
                 sys.exit(1)
             
-            # Step 5: Rename output file
+            # برگشت به دایرکتوری اصلی
+            os.chdir(original_cwd)
+            
+            # مرحله نهایی: تغییر نام فایل خروجی
             step_start = time.time()
             progress.update(2, "Finalizing user training data")
-            default_generated_file = "all_generated_merged_num.csv"
+            
+            # جستجوی فایل خروجی
+            default_generated_file = os.path.join(abs_output_dir, "all_generated_merged_num.csv")
+            
+            # چند ثانیه صبر برای اطمینان از نوشته شدن فایل
+            time.sleep(2)
+            
+            # اگر فایل در مسیر پیش‌فرض نبود، جستجوی بازگشتی انجام بده
+            if not os.path.exists(default_generated_file):
+                import glob
+                found_files = glob.glob(os.path.join(abs_output_dir, "**", "all_generated_merged_num.csv"), recursive=True)
+                if found_files:
+                    default_generated_file = found_files[0]
+                    print(f"✅ Found all_generated_merged_num.csv at: {default_generated_file}")
+            
+            # تغییر نام یا گزارش خطا
             if os.path.exists(default_generated_file):
                 os.rename(default_generated_file, user_merged_file)
-                # Suppressed rename message
+                print(f"✅ Renamed to: {user_merged_file}")
                 progress.step_success("User train mode completion", time.time() - step_start)
-                # Suppressed completion message
             else:
                 print(f"❌ Error: {default_generated_file} not found after Feature.py run.")
+                print(f"\n📁 Contents of {abs_output_dir}:")
+                for root, dirs, files in os.walk(abs_output_dir):
+                    level = root.replace(abs_output_dir, '').count(os.sep)
+                    indent = ' ' * 2 * level
+                    print(f"{indent}{os.path.basename(root)}/")
+                    subindent = ' ' * 2 * (level + 1)
+                    for file in files:
+                        print(f"{subindent}{file}")
                 sys.exit(1)
-        else:
-            print("❌ Error: Either --training_file or --target_files_training must be provided.")
-            sys.exit(1)
 
         # Cleanup intermediate files
         step_start = time.time()
@@ -834,8 +911,25 @@ def train(args):
                     except Exception as e:
                         print(f"⚠️ Warning: Could not remove {file_name}: {e}")
         
+        # Also clean up result CSV files from output_dir (default/target_check modes write there)
+        cwd_result_patterns = [
+            "*_Results_with_region.csv",
+            "*_Results_without_region.csv",
+            "*_Results_pairwise.csv",
+        ]
+        for pattern in cwd_result_patterns:
+            for file_path in glob.glob(os.path.join(args.output_dir, pattern)):
+                if os.path.isfile(file_path):
+                    file_name = os.path.basename(file_path)
+                    if file_name not in keep_files and file_name not in protected_input_files:
+                        try:
+                            os.remove(file_path)
+                            removed_count += 1
+                        except Exception as e:
+                            print(f"⚠️ Warning: Could not remove {file_name}: {e}")
+
         # Clean up generated_merged_num.csv files
-        generated_merged_pattern = "generated_merged_num.csv"
+        generated_merged_pattern = os.path.join(args.output_dir, "generated_merged_num.csv")
         generated_merged_files = glob.glob(generated_merged_pattern)
         for file_path in generated_merged_files:
             file_name = os.path.basename(file_path)
@@ -847,25 +941,42 @@ def train(args):
                     print(f"📄 Removed generated merged file: {file_path}")
                 except Exception as e:
                     print(f"⚠️ Warning: Could not remove file {file_path}: {e}")
-        
+        # Delete FASTA files copied into output_dir during training mode
+        # (originals are safe — these are only the copies made for Feature.py)
+        if args.target_files_training:
+            for train_file in args.target_files_training:
+                fasta_basename = os.path.basename(train_file)
+                copied_fasta = os.path.join(args.output_dir, fasta_basename)
+                # Only delete if it's a copy (not the original source file)
+                if (os.path.exists(copied_fasta) and
+                        os.path.abspath(copied_fasta) != os.path.abspath(train_file)):
+                    try:
+                        os.remove(copied_fasta)
+                        removed_count += 1
+                        print(f"🧬 Removed copied FASTA file: {copied_fasta}")
+                    except Exception as e:
+                        print(f"⚠️ Warning: Could not remove {fasta_basename}: {e}")
+
+        # Clean up generated_merged_num.csv files
+        generated_merged_pattern = os.path.join(args.output_dir, "generated_merged_num.csv")
         # Finally, clean up RNAplfold output directories
-        import shutil
-        rnaplfold_pattern = "rnaplfold_output_*"
-        rnaplfold_dirs = glob.glob(rnaplfold_pattern)
-        for dir_path in rnaplfold_dirs:
-            if os.path.isdir(dir_path):
-                try:
-                    shutil.rmtree(dir_path)
-                    removed_count += 1
-                    print(f"🗂️ Removed RNAplfold directory: {dir_path}")
-                except Exception as e:
-                    print(f"⚠️ Warning: Could not remove directory {dir_path}: {e}")
+        #import shutil
+        #rnaplfold_pattern = os.path.join(args.output_dir, "rnaplfold_output_*")
+        #rnaplfold_dirs = glob.glob(rnaplfold_pattern)
+        #for dir_path in rnaplfold_dirs:
+        #    if os.path.isdir(dir_path):
+        #       try:
+        #           shutil.rmtree(dir_path)
+        #           removed_count += 1
+        #          print(f"🗂️ Removed RNAplfold directory: {dir_path}")
+        #       except Exception as e:
+        #           print(f"⚠️ Warning: Could not remove directory {dir_path}: {e}")
         
-        cleanup_duration = time.time() - step_start
-        if removed_count > 0:
-            print(f"✅ Cleaned up {removed_count} intermediate files in {cleanup_duration:.2f}s")
-        else:
-            print(f"✅ No intermediate files to clean up")
+        #cleanup_duration = time.time() - step_start
+        #if removed_count > 0:
+        #    print(f"✅ Cleaned up {removed_count} intermediate files in {cleanup_duration:.2f}s")
+        #else:
+        #    print(f"✅ No intermediate files to clean up")
 
         # Final completion
         progress.update(progress.total_steps - progress.current_step, "Finalizing")

@@ -223,15 +223,13 @@ def construct_intarna_command(query_file, target_file, param_file, additional):
 
 
 def process_intarna_queries(
-    target_file,
-    query_file,
-    lunp_file,
-    param_file,
-    left_arm,
-    right_arm,
-    output_prefix,
-    cs_name,
+    target_file, query_file, lunp_file, param_file,
+    left_arm, right_arm, output_prefix, cs_name,
 ):
+    # param_file must be an absolute path — callers are responsible for passing it correctly
+    if not os.path.isabs(param_file):
+        param_file = os.path.abspath(param_file)
+
     with open(target_file, "r") as f:
         sequence = "".join([line.strip() for line in f if not line.startswith(">")])
     queries, all_results = [], []
@@ -311,10 +309,15 @@ def process_intarna_queries(
         with open(out, "w") as outf:
             if res_group:
                 with open(res_group[0]) as first:
-                    outf.write(first.readline())
+                    header = first.readline()
+                    if header:
+                        outf.write(header)
                 for r in res_group:
                     with open(r) as f:
-                        next(f)
+                        try:
+                            next(f)  # skip header
+                        except StopIteration:
+                            continue  # file is empty, skip it
                         outf.write(f.read())
     for f in os.listdir():
         if f.startswith(f"{output_prefix}_result_") and f.endswith(".csv"):
@@ -435,11 +438,11 @@ def post_process_features(target_file, output_dir):
     """Perform additional feature processing after Feature.py completes"""
     print("\nStarting post-processing...")
     try:
-        # Get the base name of the target file
         base_filename = os.path.splitext(os.path.basename(target_file))[0]
 
-        # Define the RNAplfold output directory
-        rnaplfold_dir = f"rnaplfold_output_{base_filename}"
+        # output_dir IS the rnaplfold directory — use it directly
+        # Also check the old relative path as fallback for backward compatibility
+        rnaplfold_dir = os.path.abspath(output_dir)
 
         # Define the path to the _lunp file
         pu_file = os.path.join(rnaplfold_dir, f"{base_filename}_lunp")
@@ -622,11 +625,12 @@ def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files
     """
     print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
-    # Look for rnaplfold_output_* directories in the working directory
+    # Look for rnaplfold_output_* directories in output_dir first, then cwd as fallback
+    search_base = os.path.abspath(output_dir) if output_dir and os.path.isdir(output_dir) else "."
     relevant_directories = [
-        d
-        for d in os.listdir(".")
-        if os.path.isdir(d) and d.startswith("rnaplfold_output_")
+        os.path.join(search_base, d)
+        for d in os.listdir(search_base)
+        if os.path.isdir(os.path.join(search_base, d)) and d.startswith("rnaplfold_output_")
     ]
 
     # If targets_fasta_files is provided, filter relevant_directories to only those
@@ -637,13 +641,13 @@ def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files
         relevant_directories = [
             d
             for d in relevant_directories
-            if d.replace("rnaplfold_output_", "") in target_basenames
+            if os.path.basename(d).replace("rnaplfold_output_", "") in target_basenames
         ]
 
     merged_data = pd.DataFrame()
     for directory in relevant_directories:
         # Extract the actual FASTA file name from the directory name
-        fasta_name = directory.replace("rnaplfold_output_", "")
+        fasta_name = os.path.basename(directory).replace("rnaplfold_output_", "")    
         fasta_file = (
             fasta_name if fasta_name.endswith(".fasta") else f"{fasta_name}.fasta"
         )
@@ -694,42 +698,36 @@ def change_working_dir(new_dir):
     finally:
         os.chdir(prev_dir)
 
-
 def main(args=None):
     if args is None:
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--targets",
-            required=True,
-            help="Path to a directory or a comma-separated list of FASTA files",
-        )
-        parser.add_argument(
-            "--params", required=True, help="Path to the CSV file containing parameters"
-        )
-        parser.add_argument(
-            "--prediction_mode",
-            required=True,
-            choices=["default", "target_screen", "target_check", "specific_query"],
-            help="Mode of operation",
-        )
-        parser.add_argument(
-            "--output_dir",
-            required=False,
-            default=".",
-            help="Directory to save all outputs",
-        )
-        parser.add_argument(
-            "--skip-deps-check",
-            action="store_true",
-            help="Skip dependency checking (for testing)",
-        )
+        parser.add_argument("--targets", required=True)
+        parser.add_argument("--params", required=True)
+        parser.add_argument("--prediction_mode", required=True)
+        parser.add_argument("--output_dir", default=".")
+        parser.add_argument("--skip-deps-check", action="store_true")
         args = parser.parse_args()
 
-        # Make params file also serve as specific_csv for specific_query mode
-        if args.prediction_mode == "specific_query":
-            args.specific_csv = args.params
+    # Resolve all paths to absolute immediately — prevents any path shifting
+    args.output_dir = os.path.abspath(args.output_dir)
+    args.params = os.path.abspath(args.params)
+    if hasattr(args, 'targets') and args.targets:
+        abs_targets = [os.path.abspath(t.strip()) for t in args.targets.split(",")]
+        args.targets = ",".join(abs_targets)
 
-    # Check dependencies unless explicitly skipped
+    # Ensure parameters.cfg exists in output_dir for IntaRNA to find it
+    os.makedirs(args.output_dir, exist_ok=True)
+    param_cfg_in_output = os.path.join(args.output_dir, "parameters.cfg")
+    if not os.path.exists(param_cfg_in_output):
+        cwd_cfg = os.path.join(os.getcwd(), "parameters.cfg")
+        if os.path.exists(cwd_cfg):
+            shutil.copy2(cwd_cfg, param_cfg_in_output)
+
+    # Make params file also serve as specific_csv for specific_query mode
+    if args.prediction_mode == "specific_query":
+        args.specific_csv = args.params
+
+    # Check dependencies unless explicitly skipped 
     if not getattr(args, "skip_deps_check", False):
         print("🔍 Checking required dependencies...")
         check_dependencies()
@@ -829,6 +827,10 @@ def main(args=None):
                 row["CA"],
             )
             target_file, region = row["CS_index"].split(":")
+            # Resolve relative target_file paths against the directory of the params file
+            if not os.path.isabs(target_file):
+                target_file = os.path.join(os.path.dirname(args.params), target_file)
+            target_file = os.path.abspath(target_file)
             processed_files.add(target_file)
             start, end = map(int, region.split("-"))
 
@@ -865,7 +867,7 @@ def main(args=None):
             output_dir = f"rnaplfold_output_{output_prefix}"
             os.makedirs(output_dir, exist_ok=True)
             lunp_file = run_rnaplfold(target_file, LA, RA, output_dir, temperature)
-            param_file = "parameters.cfg"
+            param_file = os.path.join(args.output_dir, "parameters.cfg")
             process_intarna_queries(
                 target_file,
                 query_file,
@@ -1008,6 +1010,10 @@ def main(args=None):
                 row["CA"],
             )
             target_file, position = row["CS_Index_query"].split(":")
+            # Resolve relative target_file paths against the directory of the params file
+            if not os.path.isabs(target_file):
+                target_file = os.path.join(os.path.dirname(args.params), target_file)
+            target_file = os.path.abspath(target_file)
             processed_files.add(target_file)
             start, end = map(int, position.split("-"))
 
@@ -1039,7 +1045,7 @@ def main(args=None):
             lunp_file = run_rnaplfold(
                 target_file, len(LA_seq), len(RA_seq), output_dir, temperature
             )
-            param_file = "parameters.cfg"
+            param_file = os.path.join(args.output_dir, "parameters.cfg")
             process_intarna_queries(
                 target_file,
                 query_file,
@@ -1128,7 +1134,8 @@ def main(args=None):
                     "".join([line.strip() for line in f if not line.startswith(">")])
                 )
 
-            output_dir = (
+            output_dir = os.path.join(
+                args.output_dir,
                 f"rnaplfold_output_{os.path.basename(fasta_file).split('.')[0]}"
             )
             lunp_file = run_rnaplfold(fasta_file, LA, RA, output_dir, temperature)
@@ -1253,7 +1260,7 @@ def main(args=None):
                 fasta_file,
                 query_file,
                 lunp_file,
-                "parameters.cfg",
+                os.path.join(args.output_dir, "parameters.cfg"),
                 LA,
                 RA,
                 output_prefix,
@@ -1279,5 +1286,32 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-    # Always use the main() parser for CLI entry
-    main()
+    # ایجاد پارسر برای اجرای مستقیم از خط فرمان
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--targets",
+        required=True,
+        help="Path to a directory or a comma-separated list of FASTA files",
+    )
+    parser.add_argument(
+        "--params", required=True, help="Path to the CSV file containing parameters"
+    )
+    parser.add_argument(
+        "--prediction_mode",
+        required=True,
+        choices=["default", "target_screen", "target_check", "specific_query"],
+        help="Mode of operation",
+    )
+    parser.add_argument(
+        "--output_dir",
+        required=False,
+        default=".",
+        help="Directory to save all outputs",
+    )
+    parser.add_argument(
+        "--skip-deps-check",
+        action="store_true",
+        help="Skip dependency checking (for testing)",
+    )
+    args = parser.parse_args()
+    main(args)

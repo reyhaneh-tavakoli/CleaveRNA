@@ -33,7 +33,7 @@ python3 "$script_path" \
   --training_file $TRAINING_FILE \
   --model_name $MODEL_NAME \
   --training_scores $TRAINING_SCORES \
-  --output_dir "$output_dir"
+  --output_dir "output"
 
 # Record the end time
 end_time=$(date)

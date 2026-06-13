@@ -25,7 +25,6 @@ start_time=$(date)
 
 # prediction mode - using pre-existing training data for prediction
 echo "Running in prediction mode..."
-output_dir=$(pwd)  # Use the current directory where the script is run
 python3 "$script_path" \
   --target_files_prediction $TARGETS \
   --params $PARAMS \
@@ -33,7 +32,7 @@ python3 "$script_path" \
   --training_file $TRAINING_FILE \
   --training_scores $TRAINING_SCORES \
   --model_name $MODEL_NAME \
-  --output_dir "$output_dir"
+  --output_dir "output"
 
 # Record the end time
 end_time=$(date)
