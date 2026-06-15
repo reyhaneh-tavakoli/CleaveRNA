@@ -1531,6 +1531,10 @@ def main():
             )
             sys.exit(1)
 
+        # Resolve output_dir to absolute here, before any os.chdir could happen
+        args.output_dir = os.path.abspath(args.output_dir)
+        os.makedirs(args.output_dir, exist_ok=True)
+
         # Create parameters.cfg if it doesn't exist
         cfg_path = os.path.join(args.output_dir, "parameters.cfg")
         if not os.path.exists(cfg_path):
