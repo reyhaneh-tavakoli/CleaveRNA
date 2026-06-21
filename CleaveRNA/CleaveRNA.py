@@ -1000,6 +1000,19 @@ def train(args):
                 progress.step_success(
                     "User feature generation", time.time() - step_start
                 )
+                
+                # DEBUG: show full directory tree of abs_output_dir
+                print(f"\n🔍 DEBUG: Full contents of {abs_output_dir} after Feature.py:")
+                for root, dirs, files in os.walk(abs_output_dir):
+                    level = root.replace(abs_output_dir, "").count(os.sep)
+                    indent = "  " * level
+                    print(f"{indent}{os.path.basename(root)}/")
+                    for f in files:
+                        fpath = os.path.join(root, f)
+                        print(f"{indent}  {f}  ({os.path.getsize(fpath)} bytes)")
+                print(f"🔍 DEBUG: cwd after subprocess = {os.getcwd()}")
+                print(f"🔍 DEBUG: abs_output_dir = {abs_output_dir}")
+                print(f"🔍 DEBUG: looking for = {os.path.join(abs_output_dir, 'all_generated_merged_num.csv')}")
 
             except subprocess.CalledProcessError as e:
                 print(f"❌ Error: Feature.py execution failed with error: {e}")
