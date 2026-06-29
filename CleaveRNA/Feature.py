@@ -223,8 +223,14 @@ def construct_intarna_command(query_file, target_file, param_file, additional):
 
 
 def process_intarna_queries(
-    target_file, query_file, lunp_file, param_file,
-    left_arm, right_arm, output_prefix, cs_name,
+    target_file,
+    query_file,
+    lunp_file,
+    param_file,
+    left_arm,
+    right_arm,
+    output_prefix,
+    cs_name,
 ):
     # param_file must be an absolute path — callers are responsible for passing it correctly
     if not os.path.isabs(param_file):
@@ -626,39 +632,57 @@ def merge_all_generated_files(output_dir, final_output_file, targets_fasta_files
     print("\nMerging all generated_merged_num.csv files for target_screen mode...")
 
     # Look for rnaplfold_output_* directories in output_dir first, then cwd as fallback
-    search_base = os.path.abspath(output_dir) if output_dir and os.path.isdir(output_dir) else "."
+    search_base = (
+        os.path.abspath(output_dir) if output_dir and os.path.isdir(output_dir) else "."
+    )
     relevant_directories = [
         os.path.join(search_base, d)
         for d in os.listdir(search_base)
-        if os.path.isdir(os.path.join(search_base, d)) and d.startswith("rnaplfold_output_")
+        if os.path.isdir(os.path.join(search_base, d))
+        and d.startswith("rnaplfold_output_")
     ]
 
-    # If targets_fasta_files is provided, filter relevant_directories to only those
+    # If targets_fasta_files is provided, try to filter relevant_directories
     if targets_fasta_files is not None:
-        target_basenames = set(
-            [os.path.splitext(os.path.basename(f))[0] for f in targets_fasta_files]
-        )
-        relevant_directories = [
+        target_basenames = {
+            os.path.splitext(os.path.basename(f))[0] for f in targets_fasta_files
+        }
+
+        filtered_directories = [
             d
             for d in relevant_directories
             if os.path.basename(d).replace("rnaplfold_output_", "") in target_basenames
         ]
 
+        # If filtering worked, use filtered list
+        if filtered_directories:
+            relevant_directories = filtered_directories
+        else:
+            # Galaxy often renames files to dataset_xxx, so matching may fail
+            print(
+                "⚠ Warning: Could not match rnaplfold_output directories with target FASTA names. "
+                "Falling back to all discovered rnaplfold_output_* directories."
+            )
+
     merged_data = pd.DataFrame()
+
     for directory in relevant_directories:
-        # Extract the actual FASTA file name from the directory name
-        fasta_name = os.path.basename(directory).replace("rnaplfold_output_", "")    
+        # Extract the FASTA name from the directory name
+        fasta_name = os.path.basename(directory).replace("rnaplfold_output_", "")
         fasta_file = (
             fasta_name if fasta_name.endswith(".fasta") else f"{fasta_name}.fasta"
         )
-        fasta_file = os.path.basename(fasta_file)  # Only the filename
+        fasta_file = os.path.basename(fasta_file)
+
         for root, _, files in os.walk(directory):
             for file in files:
                 if file == "generated_merged_num.csv":
                     file_path = os.path.join(root, file)
                     df = pd.read_csv(file_path)
-                    # Always set target_file column to the FASTA file name for every row
+
+                    # Add column indicating the target FASTA file
                     df["target_file"] = fasta_file
+
                     merged_data = pd.concat([merged_data, df], ignore_index=True)
 
     if merged_data.empty:
@@ -698,6 +722,7 @@ def change_working_dir(new_dir):
     finally:
         os.chdir(prev_dir)
 
+
 def main(args=None):
     if args is None:
         parser = argparse.ArgumentParser()
@@ -711,7 +736,7 @@ def main(args=None):
     # Resolve all paths to absolute immediately — prevents any path shifting
     args.output_dir = os.path.abspath(args.output_dir)
     args.params = os.path.abspath(args.params)
-    if hasattr(args, 'targets') and args.targets:
+    if hasattr(args, "targets") and args.targets:
         abs_targets = [os.path.abspath(t.strip()) for t in args.targets.split(",")]
         args.targets = ",".join(abs_targets)
 
@@ -727,7 +752,7 @@ def main(args=None):
     if args.prediction_mode == "specific_query":
         args.specific_csv = args.params
 
-    # Check dependencies unless explicitly skipped 
+    # Check dependencies unless explicitly skipped
     if not getattr(args, "skip_deps_check", False):
         print("🔍 Checking required dependencies...")
         check_dependencies()
@@ -1136,7 +1161,7 @@ def main(args=None):
 
             output_dir = os.path.join(
                 args.output_dir,
-                f"rnaplfold_output_{os.path.basename(fasta_file).split('.')[0]}"
+                f"rnaplfold_output_{os.path.basename(fasta_file).split('.')[0]}",
             )
             lunp_file = run_rnaplfold(fasta_file, LA, RA, output_dir, temperature)
 
