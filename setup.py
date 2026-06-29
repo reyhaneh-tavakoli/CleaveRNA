@@ -16,7 +16,7 @@ except FileNotFoundError:
 
 setup(
     name="CleaveRNA",
-    version="1.0.1",
+    version="1.0.2",
     author="reyhaneh tavakoli and contributors",
     author_email="rey.ta.kop.biochem@gmail.com",
     description="Advanced machine learning-based computational tool for scoring candidate DNAzyme cleavage sites",
