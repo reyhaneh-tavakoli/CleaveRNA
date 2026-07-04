@@ -570,9 +570,16 @@ def train(args):
             # Search each Dz_seq row in seq2 column and merge if found
             print(f"🔄 Merging based on Dz_seq (balanced) ↔ seq2 (standardized)...")
 
+            # Drop ML_training_score from standardized before merge to prevent
+            # pandas renaming it to ML_training_score_x / ML_training_score_y.
+            # ML_training_score is preserved from df_balanced (left side).
+            standardized_for_merge = df_standardized.drop(
+                columns=["ML_training_score"], errors="ignore"
+            )
+
             # Use left join to keep all balanced rows, then filter out unmatched ones
             df_merged_train = df_balanced.merge(
-                df_standardized, left_on="Dz_seq", right_on="seq2", how="left"
+                standardized_for_merge, left_on="Dz_seq", right_on="seq2", how="left"
             )
 
             # Remove rows where seq2 is NaN (no match found in standardized file)

@@ -14,7 +14,7 @@ Command-line tool:
     cleaverna: Main CleaveRNA analysis and feature extraction tool
 """
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __author__ = "reyhaneh tavakoli and contributors"
 __email__ = "rey.ta.kop.biochem@gmail.com"
 __description__ = "Advanced machine learning-based computational tool for scoring candidate DNAzyme cleavage sites in substrate RNA sequences using structural and thermodynamic features."
