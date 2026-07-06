@@ -565,28 +565,59 @@ def train(args):
             # Step 9: Merge training data using Dz_seq and seq2 columns
             step_start = time.time()
             progress.update(2, "Merging training datasets")
-
-            # Merge balanced file (Dz_seq) with standardized file (seq2)
-            # Search each Dz_seq row in seq2 column and merge if found
+            
             print(f"🔄 Merging based on Dz_seq (balanced) ↔ seq2 (standardized)...")
-
-            # Drop ML_training_score from standardized before merge to prevent
-            # pandas renaming it to ML_training_score_x / ML_training_score_y.
-            # ML_training_score is preserved from df_balanced (left side).
+            
+            # اطمینان از وجود ستون‌های مورد نیاز
+            if "Dz_seq" not in df_balanced.columns:
+                print("❌ Error: 'Dz_seq' column not found in balanced dataframe")
+                sys.exit(1)
+            
+            if "seq2" not in df_standardized.columns:
+                print("❌ Error: 'seq2' column not found in standardized dataframe")
+                sys.exit(1)
+            
+            # ذخیره ستون ML_training_score از df_balanced قبل از هر تغییر
+            if "ML_training_score" in df_balanced.columns:
+                ml_scores = df_balanced[["Dz_seq", "ML_training_score"]].copy()
+            else:
+                print("❌ Error: 'ML_training_score' column not found in balanced dataframe")
+                sys.exit(1)
+            
+            # حذف ستون ML_training_score از df_standardized اگر وجود دارد
             standardized_for_merge = df_standardized.drop(
                 columns=["ML_training_score"], errors="ignore"
             )
-
-            # Use left join to keep all balanced rows, then filter out unmatched ones
+            
+            # انجام merge
             df_merged_train = df_balanced.merge(
-                standardized_for_merge, left_on="Dz_seq", right_on="seq2", how="left"
+                standardized_for_merge, 
+                left_on="Dz_seq", 
+                right_on="seq2", 
+                how="left"
             )
-
+            
+            # بررسی اینکه آیا ستون ML_training_score در نتیجه وجود دارد
+            if "ML_training_score" not in df_merged_train.columns:
+                # اگر وجود نداشت، آن را از ml_scores اضافه می‌کنیم
+                print("⚠️ ML_training_score lost during merge, re-adding from saved copy...")
+                df_merged_train = df_merged_train.merge(
+                    ml_scores, 
+                    left_on="Dz_seq", 
+                    right_on="Dz_seq", 
+                    how="left"
+                )
+            
+            # اگر هنوز وجود نداشت، خطا بده
+            if "ML_training_score" not in df_merged_train.columns:
+                print("❌ Error: ML_training_score column was lost during merge")
+                sys.exit(1)
+            
             # Remove rows where seq2 is NaN (no match found in standardized file)
             initial_balanced_count = len(df_balanced)
             df_merged_train = df_merged_train.dropna(subset=["seq2"])
             final_count = len(df_merged_train)
-
+            
             # Report merging statistics
             removed_count = initial_balanced_count - final_count
             if removed_count > 0:
@@ -600,12 +631,12 @@ def train(args):
                 print(
                     f"✅ Successfully merged all {final_count} rows from balanced file with standardized file"
                 )
-
+            
             # Clean up duplicate columns - drop Dz_seq and keep seq2 from standardized file
-            if "Dz_seq" in df_merged_train.columns:
+            if "Dz_seq" in df_merged_train.columns and "seq2" in df_merged_train.columns:
                 df_merged_train = df_merged_train.drop(columns=["Dz_seq"])
-
-            # Ensure ML_training_score is preserved
+            
+            # Ensure ML_training_score is still present
             if "ML_training_score" not in df_merged_train.columns:
                 print("❌ Error: ML_training_score column was lost during merge")
                 sys.exit(1)
